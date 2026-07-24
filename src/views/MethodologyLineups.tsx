@@ -132,6 +132,27 @@ export default function MethodologyLineups() {
           , which is exactly why defense needs the on/off signal most. Toggle to
           plain ridge on the board to see the un-priored estimate.
         </p>
+        <p>
+          <span className="font-medium text-ink">We tested a second prior and it
+          did not matter.</span> Published work reports that priors built from
+          minutes played and team strength are more reliable than the
+          alternatives, so we built one and compared the two on held-out
+          game-margin error. Judged as a standalone predictor the
+          minutes-and-team prior is clearly better — it wins all six seasons, by
+          0.45 points of RMSE — even though it fits the training data far worse
+          (R² around 0.12 against 0.34), which is a plain case of the box-score
+          version over-fitting.
+        </p>
+        <p>
+          But that is not how a prior is used here. Judged as the shrinkage
+          target it actually is, the two are indistinguishable: 15.132 against
+          15.139 points of RMSE, a difference of 0.04%, with the box version
+          ahead in five of six seasons. Once the ridge has real possessions to
+          work with, the prior only governs the players too thin to measure, and
+          the choice between two reasonable priors stops mattering. So the
+          box-score prior stays — kept because the evidence says the swap buys
+          nothing, not because it was there first.
+        </p>
       </div>
 
       <h2 className={H2}>Error bars and inseparable players</h2>
