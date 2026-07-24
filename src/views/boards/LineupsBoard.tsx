@@ -92,7 +92,7 @@ function PlayersTab({
 
   return (
     <ol className="mx-auto max-w-5xl px-5 pb-10 sm:px-8">
-      <div className="mt-6 hidden grid-cols-[2.5rem_minmax(0,1fr)_5rem_5rem_9rem] items-end gap-x-4 border-b border-line pb-2 sm:grid">
+      <div className="mt-6 hidden grid-cols-[2.5rem_minmax(0,1fr)_5rem_5rem_11rem] items-end gap-x-4 border-b border-line pb-2 sm:grid">
         <span />
         <span className="font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">Player</span>
         {(["oP", "dP"] as PlayerSort[]).map((k) => (
@@ -110,8 +110,13 @@ function PlayersTab({
         <li key={r.id}>
           <Link to={`/player/${lg}/${r.id}`}
             className="group block border-b border-line-soft transition-colors duration-150 hover:bg-wash">
-            <div className="hidden grid-cols-[2.5rem_minmax(0,1fr)_5rem_5rem_9rem] items-center gap-x-4 py-3 sm:grid">
-              <span className="text-right font-mono tnum text-sm text-ink-faint">{i + 1}</span>
+            <div className="hidden grid-cols-[2.5rem_minmax(0,1fr)_5rem_5rem_11rem] items-center gap-x-4 py-3 sm:grid">
+              {/* tier, not rank: printed once where a band starts, blank inside
+                  it, because a number on every row reads as an ordering the
+                  intervals do not support */}
+              <span className="text-right font-mono tnum text-sm text-ink-faint">
+                {i === 0 || filtered[i - 1].tier !== r.tier ? `T${r.tier}` : ""}
+              </span>
               <span className="min-w-0">
                 <span className="block truncate font-display text-[15px] font-semibold text-ink">{r.name}</span>
                 <span className="block truncate text-xs text-ink-soft">
@@ -122,11 +127,18 @@ function PlayersTab({
               <span className="text-right font-mono tnum text-sm" style={{ color: divergingText(d(r)) }}>{signed(d(r), 1)}</span>
               <span className="flex items-center justify-end gap-3">
                 <NetBar v={net(r)} />
-                <span className="w-12 text-right font-mono tnum text-lg" style={{ color: divergingText(net(r)) }}>{signed(net(r), 1)}</span>
+                <span className="w-20 text-right">
+                  <span className="block font-mono tnum text-lg" style={{ color: divergingText(net(r)) }}>{signed(net(r), 1)}</span>
+                  <span className="block font-mono tnum text-[10px] text-ink-faint">
+                    {signed(r.netCi[0], 1)} to {signed(r.netCi[1], 1)}
+                  </span>
+                </span>
               </span>
             </div>
             <div className="flex items-center gap-2.5 py-3 sm:hidden">
-              <span className="w-6 text-right font-mono tnum text-xs text-ink-faint">{i + 1}</span>
+              <span className="w-6 text-right font-mono tnum text-xs text-ink-faint">
+                {i === 0 || filtered[i - 1].tier !== r.tier ? `T${r.tier}` : ""}
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-display text-[15px] font-semibold text-ink">{r.name}</span>
                 <span className="block truncate text-xs text-ink-soft">
@@ -264,6 +276,14 @@ export default function LineupsBoard() {
           toward a box-score prior; <span className="font-medium">plain ridge</span>{" "}
           shrinks toward zero. Whiskers on the scatter are ±1 approximate standard
           error. <Link to="/methodology/lineups" className="underline decoration-warm decoration-2 underline-offset-2">How this is built →</Link>
+        </p>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
+          <span className="font-medium text-ink">Players are grouped in tiers, not
+          ranked.</span> The interval under each figure is the range the estimate is
+          consistent with; where two players' intervals overlap, the data does not
+          say which is better, and numbering them would imply it does. A tier label
+          appears where a band begins. Tiers are computed in the exported data
+          rather than applied here, so they cannot be lost in a redesign.
         </p>
       </div>
 

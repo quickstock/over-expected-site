@@ -197,6 +197,15 @@ export interface RapmRow {
   netP: number;
   seO: number;
   seD: number;
+  /** SE of net, combining both sides assuming independence (approximate). */
+  seNet: number;
+  /** Approximate 95% interval on netP — NOT a posterior credible interval.
+      See meta.intervals for exactly what it is and is not. */
+  netCi: [number, number];
+  /** Tier assigned from interval overlap, computed in the export so a UI
+      change cannot turn tiers back into ranks. 1 is best. Players sharing a
+      tier are not distinguishable at 95%. */
+  tier: number;
 }
 
 /** One 5-man lineup-season. `net100` actual; `exp100` = sum of members'
@@ -288,6 +297,15 @@ export interface RapmData {
       sharedPoss: number;
     }[];
     boxPriorR2: Record<string, { o: number | null; d: number | null }>;
+    /** What the intervals are, and the approximations behind them. */
+    intervals: {
+      level: number;
+      z: number;
+      kind: string;
+      note: string;
+    };
+    /** The tier rule, carried in the data rather than the UI. */
+    tiering: { rule: string; why: string };
     /** Out-of-sample: half-season synergy vs next-half realized. r is null
         when too few paired lineups; the board renders whatever this says. */
     synergyOOS: { r: number | null; n: number; method: string };
