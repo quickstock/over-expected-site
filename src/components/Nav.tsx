@@ -16,8 +16,14 @@ const NAV_ITEMS = [
 function useNavItems() {
   const { league } = useLeague();
   const items = [...NAV_ITEMS];
-  if (LEAGUE_DEFS[league].layers?.lineups) {
+  const layers = LEAGUE_DEFS[league].layers;
+  if (layers?.lineups) {
     items.splice(1, 0, { to: `/lineups/${league}`, label: "Lineups" });
+  }
+  if (layers?.value) {
+    items.splice(layers.lineups ? 2 : 1, 0, {
+      to: `/value/${league}`, label: "Value",
+    });
   }
   return items;
 }

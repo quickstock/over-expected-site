@@ -8,9 +8,11 @@ import CommandK from "./components/CommandK";
 import Landing from "./views/Landing";
 import Leaderboard from "./views/Leaderboard";
 import LineupsBoard from "./views/boards/LineupsBoard";
+import ValueBoard from "./views/boards/ValueBoard";
 import Player from "./views/Player";
 import Methodology from "./views/Methodology";
 import MethodologyLineups from "./views/MethodologyLineups";
+import MethodologyValue from "./views/MethodologyValue";
 import LineupDetail from "./views/LineupDetail";
 import OpenData from "./views/OpenData";
 import Compare from "./views/Compare";
@@ -34,6 +36,12 @@ function ScrollToTop() {
 function LineupsIndex() {
   const { league } = useLeague();
   return <Navigate to={`/lineups/${league}`} replace />;
+}
+
+/** /value (no league) -> the active league's board. */
+function ValueIndex() {
+  const { league } = useLeague();
+  return <Navigate to={`/value/${league}`} replace />;
 }
 
 /** Push the active league's diverging poles onto the root as CSS custom
@@ -78,8 +86,11 @@ export default function App() {
           <Route path="/lineups" element={<LineupsIndex />} />
           <Route path="/lineups/:lg" element={<LineupsBoard />} />
           <Route path="/lineups/:lg/:lineupId" element={<LineupDetail />} />
+          <Route path="/value" element={<ValueIndex />} />
+          <Route path="/value/:lg" element={<ValueBoard />} />
           <Route path="/methodology" element={<Methodology />} />
           <Route path="/methodology/lineups" element={<MethodologyLineups />} />
+          <Route path="/methodology/value" element={<MethodologyValue />} />
           <Route path="/data" element={<OpenData />} />
           <Route path="/compare" element={<Compare />} />
           <Route path="/league" element={<League />} />

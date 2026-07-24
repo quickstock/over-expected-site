@@ -62,6 +62,10 @@ export interface LeagueDef {
   layers?: {
     /** Lineups / RAPM board + player-page RAPM section. */
     lineups?: boolean;
+    /** Value board: wins over replacement, and contract surplus where
+        per-player salaries are available (NBA only; the European leagues
+        publish none). */
+    value?: boolean;
   };
 }
 
@@ -96,7 +100,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     hasStory: true,
     sourceCredit:
       "Underlying play-by-play and tracking aggregates are NBA.com data.",
-    layers: { lineups: true },
+    layers: { lineups: true, value: true },
   },
   EL: {
     code: "EL",

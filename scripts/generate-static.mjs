@@ -92,6 +92,9 @@ const data = dataByLeague[LEAGUES[0]];
 const LINEUP_LEAGUES = LEAGUES.filter((lg) =>
   existsSync(join(ROOT, "public", `rapm-${lg}.json`)),
 );
+const VALUE_LEAGUES = LEAGUES.filter((lg) =>
+  existsSync(join(ROOT, "public", `value-${lg}.json`)),
+);
 const template = readFileSync(join(DIST, "index.html"), "utf8");
 
 const fonts = [
@@ -427,6 +430,25 @@ if (LINEUP_LEAGUES.length) {
   });
 }
 
+// ---- value layer (shares the lineups card: same underlying impact metric)
+if (VALUE_LEAGUES.length) {
+  for (const lg of VALUE_LEAGUES) {
+    shell({
+      title: `Value · ${LEAGUE_LABEL[lg]} · Over Expected`,
+      description: `Wins over replacement for every qualified ${LEAGUE_LABEL[lg]} player, built on adjusted plus-minus rather than a box-score estimate of it, plus contract surplus wherever per-player salaries are public.`,
+      path: `/value/${lg}`,
+      image: "lineups.png",
+    });
+  }
+  shell({
+    title: "Value methodology · Over Expected",
+    description:
+      "How wins over replacement is computed, why adjusted plus-minus replaces Box Plus/Minus in the VORP formula, and why the surplus column is absent rather than estimated when salaries aren't public.",
+    path: "/methodology/value",
+    image: "lineups.png",
+  });
+}
+
 // sitemap + robots for the deployed domain
 const urls = [
   `${BASE}/`, `${BASE}/leaderboard`, `${BASE}/methodology`,
@@ -434,6 +456,8 @@ const urls = [
   `${BASE}/league`, `${BASE}/feedback`,
   ...LINEUP_LEAGUES.map((lg) => `${BASE}/lineups/${lg}`),
   ...(LINEUP_LEAGUES.length ? [`${BASE}/methodology/lineups`] : []),
+  ...VALUE_LEAGUES.map((lg) => `${BASE}/value/${lg}`),
+  ...(VALUE_LEAGUES.length ? [`${BASE}/methodology/value`] : []),
   ...[...latestByPlayer.values()]
     .map((r) => `${BASE}/player/${r.lg}/${r.id}`)
     .sort(),

@@ -11,6 +11,7 @@ import type {
   PlayerSeasonChunk,
   RapmData,
   SiteData,
+  ValueData,
 } from "./types";
 import {
   ACTIVE_LEAGUES,
@@ -250,6 +251,18 @@ export type RapmState =
 /** The active/explicit league's RAPM dataset (rapm-{LG}.json). */
 export function useRapm(league: League): RapmState {
   const r = useLayerFile<RapmData>(`rapm-${league}.json`);
+  if (r.status === "ready") return { status: "ready", data: r.data! };
+  return { status: r.status };
+}
+
+export type ValueState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; data: ValueData };
+
+/** The league's value/surplus dataset (value-{LG}.json). */
+export function useValue(league: League): ValueState {
+  const r = useLayerFile<ValueData>(`value-${league}.json`);
   if (r.status === "ready") return { status: "ready", data: r.data! };
   return { status: r.status };
 }

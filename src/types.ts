@@ -215,6 +215,51 @@ export interface LineupRow {
   sqSynergy: number | null;
 }
 
+/** One player-season of production and (where salaries exist) contract value.
+    `net` is prior-informed RAPM per 100 — this layer substitutes it for BPM,
+    which would have to come from a source the pipeline forbids. `war` is wins
+    over replacement. The three dollar fields are null whenever no salary file
+    was present at export: never zero, never invented. */
+export interface ValueRow {
+  id: string;
+  name: string;
+  teams: string[];
+  poss: number;
+  /** Share of his teams' possessions, summed across a midseason trade. */
+  share: number;
+  net: number;
+  vorp: number;
+  war: number;
+  salary: number | null;
+  value: number | null;
+  surplus: number | null;
+}
+
+export interface ValueData {
+  meta: {
+    layer: "value";
+    league: League;
+    version: number;
+    generated: string;
+    seasons: string[];
+    qualifyPoss: number;
+    boardMax: number;
+    boardStep: number;
+    /** Replacement level in points per 100 (-2.0, the BPM convention). */
+    replacementPer100: number;
+    winsPerVorp: number;
+    /** Which impact metric stands in for BPM. */
+    impactMetric: string;
+    teamGames: Record<string, number>;
+    /** Per season: was a salary file present at export time? */
+    salaryAvailable: Record<string, boolean>;
+    anySalary: boolean;
+    costPerWin: Record<string, number>;
+  };
+  /** Per season, sorted by war desc. */
+  players: Record<string, ValueRow[]>;
+}
+
 export interface RapmData {
   meta: {
     layer: "lineups";

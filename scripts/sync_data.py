@@ -101,6 +101,8 @@ _NBA_PUBLIC = OE / "NBA_OE" / "site" / "public"
 LAYER_SOURCES = [
     # (glob for the core file, source dir, glob for per-season chunks)
     ("rapm-*.json", _NBA_PUBLIC, "lineups-*-*.json"),
+    # value has no per-season chunks; the chunk glob matches nothing.
+    ("value-*.json", _NBA_PUBLIC, "value-chunks-none-*.json"),
 ]
 
 
