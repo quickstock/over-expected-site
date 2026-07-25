@@ -82,10 +82,19 @@ export default function MethodologyValue() {
           salary.
         </p>
         <p>
-          All of that needs a per-player salary, and this project has no free,
-          licensed source for one. When no salary file is present the export
-          ships production only and every dollar field is null — never zero,
-          never estimated — and the board says so.{" "}
+          All of that needs a per-player salary for every player, and this build
+          does not have one. NBA salaries are genuinely public — Spotrac and
+          Basketball-Reference both publish them — so this is not a claim that
+          the data does not exist. What failed was <em>automated</em> collection:
+          Spotrac serves an "update your browser" block to scripted clients, and
+          working around a deliberate access control is not something this
+          project will do. A licensed feed or a manual export would supply the
+          same figures perfectly well.
+        </p>
+        <p>
+          So when no salary file is present the export ships production only and
+          every dollar field is null — never zero, never estimated — and the
+          board says so.{" "}
           {meta && !meta.anySalary ? (
             <strong className="text-ink">
               No season currently has salary data, so no surplus is shown
