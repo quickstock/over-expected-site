@@ -25,6 +25,9 @@ function useNavItems() {
       to: `/value/${league}`, label: "Value",
     });
   }
+  // Calibration is platform-wide, not a per-league layer: it states what the
+  // model can measure anywhere, so it appears for every league.
+  items.push({ to: `/calibration/${league}`, label: "Calibration" });
   return items;
 }
 

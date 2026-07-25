@@ -430,6 +430,18 @@ if (LINEUP_LEAGUES.length) {
   });
 }
 
+// ---- calibration: platform-wide, so a shell for every active league
+if (existsSync(join(ROOT, "public", "calibration-NBA.json"))) {
+  for (const lg of LEAGUES) {
+    shell({
+      title: `Calibration · ${LEAGUE_LABEL[lg]} · Over Expected`,
+      description: `What this model can and cannot measure: how many attempts before shot selection and shot-making mean anything, what accuracy costs as data quality falls to a federation scoresheet, whether the residual is contaminated by shot openness, and what it cannot see.`,
+      path: `/calibration/${lg}`,
+      image: "site.png",
+    });
+  }
+}
+
 // ---- value layer (shares the lineups card: same underlying impact metric)
 if (VALUE_LEAGUES.length) {
   for (const lg of VALUE_LEAGUES) {
@@ -458,6 +470,8 @@ const urls = [
   ...(LINEUP_LEAGUES.length ? [`${BASE}/methodology/lineups`] : []),
   ...VALUE_LEAGUES.map((lg) => `${BASE}/value/${lg}`),
   ...(VALUE_LEAGUES.length ? [`${BASE}/methodology/value`] : []),
+  ...(existsSync(join(ROOT, "public", "calibration-NBA.json"))
+    ? LEAGUES.map((lg) => `${BASE}/calibration/${lg}`) : []),
   ...[...latestByPlayer.values()]
     .map((r) => `${BASE}/player/${r.lg}/${r.id}`)
     .sort(),

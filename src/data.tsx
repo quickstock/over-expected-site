@@ -10,6 +10,7 @@ import type {
   LineupChunk,
   PlayerSeasonChunk,
   RapmData,
+  CalibrationData,
   SiteData,
   ValueData,
 } from "./types";
@@ -251,6 +252,19 @@ export type RapmState =
 /** The active/explicit league's RAPM dataset (rapm-{LG}.json). */
 export function useRapm(league: League): RapmState {
   const r = useLayerFile<RapmData>(`rapm-${league}.json`);
+  if (r.status === "ready") return { status: "ready", data: r.data! };
+  return { status: r.status };
+}
+
+export type CalibrationState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; data: CalibrationData };
+
+/** The calibration deliverables. One artifact, NBA-derived, shown on every
+    league's route because the limits it states are platform-wide. */
+export function useCalibration(): CalibrationState {
+  const r = useLayerFile<CalibrationData>("calibration-NBA.json");
   if (r.status === "ready") return { status: "ready", data: r.data! };
   return { status: r.status };
 }

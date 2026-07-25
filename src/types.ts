@@ -328,3 +328,78 @@ export type LineupChunk = Record<
   string,
   { games: [string, number, number, number, number][] }
 >;
+
+/* ---------------------------------------------------------------- */
+/* Calibration layer (calibration-{LG}.json) — the credibility page.  */
+/* Caveats travel WITH the numbers so the UI cannot drop one.         */
+/* ---------------------------------------------------------------- */
+
+export interface CalibrationComponent {
+  reliability: (number | null)[];
+  impliedR1?: (number | null)[];
+  "attemptsFor0.5": number | null;
+  "attemptsFor0.7": number | null;
+}
+
+export interface CalibrationData {
+  meta: {
+    layer: "calibration";
+    league: League;
+    version: number;
+    generated: string;
+    shotsAnalysed: number;
+    leaguesInReliability: string[];
+    commands: Record<string, string>;
+  };
+  number: {
+    headline: string;
+    rawCorrelation: number;
+    rawCorrelationCI: [number, number];
+    controlledBeta: number;
+    controlledBetaCI: [number, number];
+    controlledP: number;
+    partialR2: number;
+    n: number;
+    players: number;
+    opennessIndexSd: number;
+    minimumDetectableEffect: number;
+    caveat: string;
+    clustering: string;
+  };
+  curve: {
+    sweep: number[];
+    byLeague: Record<string, {
+      selection: CalibrationComponent;
+      making: CalibrationComponent;
+      ceilingRung: number | null;
+      makingAtCeiling: number | null;
+      selectionAtCeiling: number | null;
+      note: string | null;
+    }>;
+    fixedPopulation: Record<string, {
+      selection: CalibrationComponent;
+      making: CalibrationComponent;
+    }>;
+    caveats: string[];
+  };
+  degradation: {
+    rungs: {
+      key: string; feed: string; nFeatures: number;
+      logLoss: number; logLossVsFull: number; ece: number; auc: number;
+      scale: string;
+    }[];
+    subsampleSize: number;
+    endpointGap: { subsample: number; full: number };
+    headline: string;
+    caveats: string[];
+  };
+  limits: {
+    noTracking: string;
+    assistProxyDead: string;
+    survivingProxies: string[];
+    cornerEffectAlreadyPriced: string;
+    pooledBaselineFault: string;
+    predictiveValidity: string;
+    noYouthData: string;
+  };
+}

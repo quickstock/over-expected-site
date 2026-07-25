@@ -103,6 +103,8 @@ LAYER_SOURCES = [
     ("rapm-*.json", _NBA_PUBLIC, "lineups-*-*.json"),
     # value has no per-season chunks; the chunk glob matches nothing.
     ("value-*.json", _NBA_PUBLIC, "value-chunks-none-*.json"),
+    # calibration is exported straight into site/public by the calibration
+    # project, so it needs no copy step; listed here for the record only.
 ]
 
 

@@ -9,6 +9,7 @@ import Landing from "./views/Landing";
 import Leaderboard from "./views/Leaderboard";
 import LineupsBoard from "./views/boards/LineupsBoard";
 import ValueBoard from "./views/boards/ValueBoard";
+import Calibration from "./views/Calibration";
 import Player from "./views/Player";
 import Methodology from "./views/Methodology";
 import MethodologyLineups from "./views/MethodologyLineups";
@@ -36,6 +37,12 @@ function ScrollToTop() {
 function LineupsIndex() {
   const { league } = useLeague();
   return <Navigate to={`/lineups/${league}`} replace />;
+}
+
+/** /calibration (no league) -> the active league's page. */
+function CalibrationIndex() {
+  const { league } = useLeague();
+  return <Navigate to={`/calibration/${league}`} replace />;
 }
 
 /** /value (no league) -> the active league's board. */
@@ -88,6 +95,8 @@ export default function App() {
           <Route path="/lineups/:lg/:lineupId" element={<LineupDetail />} />
           <Route path="/value" element={<ValueIndex />} />
           <Route path="/value/:lg" element={<ValueBoard />} />
+          <Route path="/calibration" element={<CalibrationIndex />} />
+          <Route path="/calibration/:lg" element={<Calibration />} />
           <Route path="/methodology" element={<Methodology />} />
           <Route path="/methodology/lineups" element={<MethodologyLineups />} />
           <Route path="/methodology/value" element={<MethodologyValue />} />
