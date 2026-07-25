@@ -82,6 +82,39 @@ export default function ValueBoard() {
   const [, startTransition] = useTransition();
   const state = useValue(league);
 
+  // All hooks must run on every render, so `rows` is computed here — before the
+  // early returns below — and made null-safe. Calling useMemo after a conditional
+  // return changes the hook count once the data resolves, which is React error
+  // #310 ("rendered more hooks than during the previous render") and blanks the
+  // whole route.
+  const data = state.status === "ready" ? state.data : null;
+  const seasonsSafe = data?.meta.seasons ?? [];
+  const seasonSafe = seasonsSafe.includes(params.get("season") ?? "")
+    ? (params.get("season") as string)
+    : seasonsSafe[seasonsSafe.length - 1] ?? "";
+  const sortSafe = (["war", "net", "poss", "surplus"].includes(params.get("sort") ?? "")
+    ? params.get("sort")
+    : "war") as Sort;
+  const dirSafe = params.get("dir") === "asc" ? "asc" : "desc";
+  const minPossSafe = data
+    ? Math.max(0, Math.min(data!.meta.boardMax,
+        Number(params.get("min") ?? data.meta.qualifyPoss) || 0))
+    : 0;
+
+  const rows = useMemo(() => {
+    if (!data) return [] as ValueRow[];
+    const mul = dirSafe === "asc" ? 1 : -1;
+    const key = (r: ValueRow) =>
+      sortSafe === "surplus" ? (r.surplus ?? 0)
+      : sortSafe === "net" ? r.net
+      : sortSafe === "poss" ? r.poss
+      : r.war;
+    return (data.players[seasonSafe] ?? [])
+      .filter((r) => r.poss >= minPossSafe)
+      .slice()
+      .sort((a, b) => mul * (key(a) - key(b)));
+  }, [data, seasonSafe, minPossSafe, sortSafe, dirSafe]);
+
   if (!def.layers?.value) return <Unavailable label={def.label} />;
   if (state.status === "loading")
     return (
@@ -96,20 +129,12 @@ export default function ValueBoard() {
       </p>
     );
 
-  const { data } = state;
-  const seasons = data.meta.seasons;
-  const season = seasons.includes(params.get("season") ?? "")
-    ? (params.get("season") as string)
-    : seasons[seasons.length - 1];
-  const hasSalary = data.meta.salaryAvailable[season] ?? false;
-  const sort = (["war", "net", "poss", "surplus"].includes(params.get("sort") ?? "")
-    ? params.get("sort")
-    : "war") as Sort;
-  const dir = params.get("dir") === "asc" ? "asc" : "desc";
-  const minPoss = Math.max(
-    0,
-    Math.min(data.meta.boardMax, Number(params.get("min") ?? data.meta.qualifyPoss) || 0),
-  );
+  const seasons = data!.meta.seasons;
+  const season = seasonSafe;
+  const hasSalary = data!.meta.salaryAvailable[season] ?? false;
+  const sort = sortSafe;
+  const dir = dirSafe;
+  const minPoss = minPossSafe;
 
   const update = (patch: Record<string, string>) =>
     startTransition(() => {
@@ -120,15 +145,6 @@ export default function ValueBoard() {
   const onSort = (k: Sort) =>
     update(k === sort ? { dir: dir === "desc" ? "asc" : "desc" } : { sort: k, dir: "desc" });
 
-  const rows = useMemo(() => {
-    const mul = dir === "asc" ? 1 : -1;
-    const key = (r: ValueRow) =>
-      sort === "surplus" ? (r.surplus ?? 0) : sort === "net" ? r.net : sort === "poss" ? r.poss : r.war;
-    return (data.players[season] ?? [])
-      .filter((r) => r.poss >= minPoss)
-      .slice()
-      .sort((a, b) => mul * (key(a) - key(b)));
-  }, [data.players, season, minPoss, sort, dir]);
 
   const maxWar = rows.reduce((m, r) => Math.max(m, r.war), 0);
   const cols = hasSalary
@@ -152,8 +168,8 @@ export default function ValueBoard() {
             <input
               type="range"
               min={0}
-              max={data.meta.boardMax}
-              step={data.meta.boardStep}
+              max={data!.meta.boardMax}
+              step={data!.meta.boardStep}
               value={minPoss}
               onChange={(e) => update({ min: e.target.value })}
               className="w-28 accent-ink sm:w-36"
@@ -173,10 +189,10 @@ export default function ValueBoard() {
           What a player produced, on the replacement-level scale the public
           metrics use:{" "}
           <span className="font-mono tnum">
-            (impact − {data.meta.replacementPer100.toFixed(1)})
+            (impact − {data!.meta.replacementPer100.toFixed(1)})
           </span>{" "}
           × share of his team's possessions × season length, then ×{" "}
-          <span className="font-mono tnum">{data.meta.winsPerVorp}</span> for wins
+          <span className="font-mono tnum">{data!.meta.winsPerVorp}</span> for wins
           over replacement. The impact term is this site's own adjusted
           plus-minus rather than a box-score estimate of it.
         </p>

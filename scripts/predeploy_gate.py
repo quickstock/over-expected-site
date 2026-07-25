@@ -125,6 +125,55 @@ def check_registry_layer_files():
     ok("declared layers have their artifacts")
 
 
+# Fields the front end dereferences without a guard. A TypeScript interface can
+# claim a field the JSON never had — `RapmRow.teams` did exactly that, and
+# `r.teams.join(...)` threw and blanked the whole /lineups route while every HTTP
+# check still returned 200. Types describe JSON they never validate; this does.
+REQUIRED_ROW_FIELDS = {
+    "rapm-*.json": (["players", "*", "*"],
+                    ["id", "name", "teams", "possOff", "possDef",
+                     "oP", "dP", "netP", "seO", "seD", "netCi", "tier"]),
+    "value-*.json": (["players", "*", "*"],
+                     ["id", "name", "teams", "poss", "share", "net", "war"]),
+}
+
+
+def _sample_rows(obj, path):
+    """Walk a path with '*' wildcards, yielding leaf dicts."""
+    cur = [obj]
+    for step in path:
+        nxt = []
+        for c in cur:
+            if step == "*":
+                vals = list(c.values()) if isinstance(c, dict) else list(c)
+                nxt.extend(vals[:3])          # a sample is enough
+            elif isinstance(c, dict) and step in c:
+                nxt.append(c[step])
+        cur = nxt
+    return [c for c in cur if isinstance(c, dict)]
+
+
+def check_row_shapes():
+    print("7. layer rows carry every field the UI dereferences")
+    checked = 0
+    for pattern, (path, required) in REQUIRED_ROW_FIELDS.items():
+        for f in sorted(PUBLIC.glob(pattern)):
+            data = json.loads(f.read_text())
+            rows = _sample_rows(data, path)
+            if not rows:
+                warn(f"{f.name}: no rows found at {path}")
+                continue
+            for row in rows:
+                missing = [k for k in required if k not in row]
+                if missing:
+                    fail(f"{f.name}: row is missing {missing} — the UI would "
+                         f"throw on these and blank the route")
+                    break
+            checked += 1
+    if checked:
+        ok(f"{checked} layer file(s) have all UI-required row fields")
+
+
 def check_tests():
     print("5. never-skip test suites")
     for label, cwd, target in (
@@ -163,6 +212,7 @@ def main():
     check_privileged_flags()
     check_unavailable_flags()
     check_registry_layer_files()
+    check_row_shapes()
     check_tests()
     check_og_envelope()
 
