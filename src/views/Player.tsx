@@ -16,6 +16,7 @@ import FoulLedger from "../components/player/FoulLedger";
 import PercentileSliders from "../components/player/PercentileSliders";
 import CareerStrip from "../components/player/CareerStrip";
 import RapmPanel from "../components/player/RapmPanel";
+import ReliabilityContext from "../components/player/ReliabilityContext";
 
 const FORM_WINDOWS = ["5", "10", "15", "20"];
 
@@ -717,6 +718,10 @@ export default function Player() {
             least {int(qualify)} possessions.
           </p>
         ))}
+
+      {/* does this player's sample support the figures above? uses his ACTUAL
+          attempt count against his league's own measured reliability curve */}
+      {sv && <ReliabilityContext league={league} attempts={sv.fga} />}
 
       {/* lineup impact — its own layer file, lazy, absent for most leagues */}
       <RapmPanel league={league} season={season} playerId={row.id} />
