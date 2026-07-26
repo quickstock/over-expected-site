@@ -107,7 +107,7 @@ function PlayersTab({
         </button>
       </div>
       {filtered.map((r, i) => (
-        <li key={r.id}>
+        <li key={r.id} className="cv-row">
           <Link to={`/player/${lg}/${r.id}`}
             className="group block border-b border-line-soft transition-colors duration-150 hover:bg-wash">
             <div className="hidden grid-cols-[2.5rem_minmax(0,1fr)_5rem_5rem_11rem] items-center gap-x-4 py-3 sm:grid">
@@ -163,7 +163,7 @@ function LineupsTab({ rows, lg, season }: { rows: LineupRow[]; lg: League; seaso
     <div className="mx-auto max-w-5xl px-5 pb-10 sm:px-8">
       <ol className="mt-6">
         {sorted.map((r) => (
-          <li key={r.lineupId}>
+          <li key={r.lineupId} className="cv-row">
             <Link to={`/lineups/${lg}/${r.lineupId}?season=${encodeURIComponent(season)}`}
               className="group block border-b border-line-soft py-3 transition-colors duration-150 hover:bg-wash">
               <div className="flex items-center gap-3">
@@ -241,7 +241,7 @@ export default function LineupsBoard() {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 border-b border-line bg-paper/95 backdrop-blur">
+      <div className="sticky top-0 z-10 border-b border-line bg-paper">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-5 gap-y-3 px-5 py-3 sm:px-8">
           <SegmentedControl ariaLabel="View"
             options={[{ value: "players", label: "Players" }, { value: "lineups", label: "Lineups" }]}

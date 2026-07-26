@@ -39,10 +39,8 @@ function initialLeague(): League {
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [all, setAll] = useState<Partial<Record<League, SiteData>> | null>(
-    null,
-  );
-  const [error, setError] = useState(false);
+  const [all, setAll] = useState<Partial<Record<League, SiteData>>>({});
+  const [failed, setFailed] = useState<Partial<Record<League, true>>>({});
   const [league, setLeagueState] = useState<League>(initialLeague);
 
   const setLeague = (lg: League) => {
@@ -51,20 +49,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    Promise.all(
-      ACTIVE_LEAGUES.map((lg) =>
-        fetch(`${import.meta.env.BASE_URL}data-${lg}.json`).then((r) => {
+    // Each league resolves independently: first paint waits only for the
+    // active league, not the slowest of nine, and one league's missing file
+    // degrades that league instead of blanking the whole site. Consumers of
+    // the map (search, cross-league lookups) already tolerate absent entries.
+    for (const lg of ACTIVE_LEAGUES) {
+      fetch(`${import.meta.env.BASE_URL}data-${lg}.json`)
+        .then((r) => {
           if (!r.ok) throw new Error(`${r.status}`);
           return r.json() as Promise<SiteData>;
-        }),
-      ),
-    )
-      .then((sets) => {
-        const map: Partial<Record<League, SiteData>> = {};
-        ACTIVE_LEAGUES.forEach((lg, i) => (map[lg] = sets[i]));
-        setAll(map);
-      })
-      .catch(() => setError(true));
+        })
+        .then((data) => setAll((prev) => ({ ...prev, [lg]: data })))
+        .catch(() => setFailed((prev) => ({ ...prev, [lg]: true })));
+    }
   }, []);
 
   // Set the diverging-color poles for the active league before any chart
@@ -72,11 +69,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   setLeagueTheme(league);
 
   const store = useMemo(
-    () => (all ? { all, league, setLeague } : null),
+    () => (all[league] ? { all, league, setLeague } : null),
     [all, league],
   );
 
-  if (error) {
+  if (failed[league]) {
     return (
       <div className="mx-auto max-w-xl px-6 py-32 text-center font-display">
         <p className="text-2xl font-semibold">The data failed to load.</p>

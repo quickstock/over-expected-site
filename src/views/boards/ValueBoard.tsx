@@ -153,7 +153,7 @@ export default function ValueBoard() {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 border-b border-line bg-paper/95 backdrop-blur">
+      <div className="sticky top-0 z-10 border-b border-line bg-paper">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-5 gap-y-3 px-5 py-3 sm:px-8">
           <SegmentedControl
             ariaLabel="Season"
@@ -258,7 +258,7 @@ export default function ValueBoard() {
         ) : (
           <ol className="pb-10">
             {rows.map((r, i) => (
-              <li key={r.id}>
+              <li key={r.id} className="cv-row">
                 <Link
                   to={`/player/${league}/${r.id}?season=${encodeURIComponent(season)}`}
                   className="group block border-b border-line-soft transition-colors duration-150 hover:bg-wash"

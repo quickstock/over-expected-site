@@ -159,7 +159,7 @@ export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNo
   return (
     <div>
       {/* controls */}
-      <div className="sticky top-0 z-10 border-b border-line bg-paper/95 backdrop-blur">
+      <div className="sticky top-0 z-10 border-b border-line bg-paper">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-3 px-5 py-3 sm:px-8">
           {lensControl}
           <SegmentedControl
@@ -250,7 +250,7 @@ export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNo
         ) : (
           <ol>
             {rows.map((r, i) => (
-              <li key={`${r.id}-${r.season}`}>
+              <li key={`-`} className="cv-row">
                 <Link
                   to={`/player/${league}/${r.id}?season=${encodeURIComponent(r.season)}`}
                   className="group block border-b border-line-soft transition-colors duration-150 hover:bg-wash focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink"

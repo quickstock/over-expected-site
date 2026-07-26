@@ -82,3 +82,11 @@ button {
     animation: none !important;
   }
 }
+
+/* Long leaderboard-style lists: skip layout/paint for offscreen rows.
+   Rows are uniform (~50px), so the placeholder size holds the scrollbar
+   steady. This is the cheap form of virtualization — no JS, no library. */
+.cv-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 50px;
+}
