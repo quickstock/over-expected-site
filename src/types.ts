@@ -403,3 +403,114 @@ export interface CalibrationData {
     noYouthData: string;
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Layer 3 — coaching / decision expected-value (ETM)                  */
+
+export interface CoachingTeamRow {
+  team: string;
+  teamId: string;
+  decisions: number;
+  /** Percentage points of win probability lost per decision. Lower is better;
+      0 would mean always taking the higher-EV option. */
+  etm: number;
+  se: number;
+  ci: [number, number];
+  /** Overlap tier, 1 = closest to optimal. Teams in one tier are not
+      distinguishable from each other, so the board must not rank within it. */
+  tier: number;
+}
+
+export interface CoachingMarginRow {
+  margin: number;
+  n: number;
+  /** Share of decisions where the three was the higher-EV option. */
+  optimalThreeShare: number;
+  /** Share where the team actually took the three. */
+  choseThreeShare: number;
+}
+
+export interface CoachingData {
+  meta: {
+    layer: "coaching";
+    league: League;
+    version: number;
+    generated: string;
+    unit: string;
+    lowerIsBetter: boolean;
+    window: { period: number; maxSeconds: number; margins: number[] };
+    shotSeconds: number;
+    minDecisions: number;
+    nDecisions: number;
+    nTeams: number;
+    aggregationLevel: string;
+    whyNotTeamSeason: string;
+    hindsightGuard: string;
+    framing: string;
+    approximations: string[];
+    spread: {
+      bestTeam: string;
+      bestEtm: number;
+      worstTeam: string;
+      worstEtm: number;
+      tiers: number;
+    };
+    distinguishableFromOptimal: { share: number; note: string };
+    tiering: { rule: string; why: string };
+  };
+  margins: CoachingMarginRow[];
+  teams: CoachingTeamRow[];
+}
+
+/* ------------------------------------------------------------------ */
+/* Layer 4 — team defence (privileged, NBA only)                       */
+
+export interface DefenseTeamRow {
+  team: string;
+  teamId: string;
+  defPoss: number;
+  shotsFaced: number;
+  /** Expected points per shot faced vs league mean, signed so positive =
+      forced worse shots. The most reliable pillar (SB 0.98). */
+  qualityForced: number;
+  qualityConceded: number;
+  /** Rim attempts faced vs league, in percentage points, positive = fewer. */
+  deterrence: number;
+  rimRate: number;
+  /** Points below expectation per 100 def. possessions. Noisiest (SB 0.72). */
+  suppression: number;
+  ptsAllowed100: number;
+}
+
+export interface DefensePillar {
+  key: "qualityForced" | "deterrence" | "suppression";
+  label: string;
+  unit: string;
+  spearmanBrown: number;
+  note: string;
+}
+
+export interface DefenseData {
+  meta: {
+    layer: "defense";
+    league: League;
+    version: number;
+    generated: string;
+    privileged: true;
+    leaguesUnavailable: string[];
+    unavailableReason: string;
+    aggregationLevel: string;
+    seasons: string[];
+    nTeamSeasons: number;
+    /** Ordered by measured reliability; the board renders in this order. */
+    pillars: DefensePillar[];
+    reliability: Record<string, { halfR: number; spearmanBrown: number }> & {
+      nTeamSeasons: number;
+      minShotsPerHalf: number;
+    };
+    playerLevelRejected: { spearmanBrown: number; why: string };
+    notModelled: string[];
+    leagueCentred: string;
+  };
+  teams: Record<string, DefenseTeamRow[]>;
+}

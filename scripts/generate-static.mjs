@@ -95,6 +95,12 @@ const LINEUP_LEAGUES = LEAGUES.filter((lg) =>
 const VALUE_LEAGUES = LEAGUES.filter((lg) =>
   existsSync(join(ROOT, "public", `value-${lg}.json`)),
 );
+const COACHING_LEAGUES = LEAGUES.filter((lg) =>
+  existsSync(join(ROOT, "public", `coaching-${lg}.json`)),
+);
+const DEFENSE_LEAGUES = LEAGUES.filter((lg) =>
+  existsSync(join(ROOT, "public", `defense-${lg}.json`)),
+);
 const template = readFileSync(join(DIST, "index.html"), "utf8");
 
 const fonts = [
@@ -461,6 +467,45 @@ if (VALUE_LEAGUES.length) {
   });
 }
 
+// ---- coaching / decision-EV layer (Layer 3). Shares the lineups card: one
+// card per layer, never per entity, to keep the render count in its envelope.
+if (COACHING_LEAGUES.length) {
+  for (const lg of COACHING_LEAGUES) {
+    shell({
+      title: `Decision EV · ${LEAGUE_LABEL[lg]} · Over Expected`,
+      description: `The end-game two-versus-three decision in ${LEAGUE_LABEL[lg]}, scored on expected win probability at the moment of the choice rather than on whether the shot went in.`,
+      path: `/coaching/${lg}`,
+      image: "lineups.png",
+    });
+  }
+  shell({
+    title: "Decision EV methodology · Over Expected",
+    description:
+      "How the end-game shot-selection decision is valued, why the outcome is never an input, and why teams are grouped into overlap tiers rather than ranked one to thirty.",
+    path: "/methodology/coaching",
+    image: "lineups.png",
+  });
+}
+
+// ---- team defence layer (Layer 4)
+if (DEFENSE_LEAGUES.length) {
+  for (const lg of DEFENSE_LEAGUES) {
+    shell({
+      title: `Team defence · ${LEAGUE_LABEL[lg]} · Over Expected`,
+      description: `${LEAGUE_LABEL[lg]} team defence split into the shot quality a defence forces and whether opponents then converted below expectation, with the measured reliability of each.`,
+      path: `/defense/${lg}`,
+      image: "lineups.png",
+    });
+  }
+  shell({
+    title: "Team defence methodology · Over Expected",
+    description:
+      "Why this layer is team-level and the player version was rejected on evidence, the reliability of each pillar, and what public defensive data cannot separate.",
+    path: "/methodology/defense",
+    image: "lineups.png",
+  });
+}
+
 // sitemap + robots for the deployed domain
 const urls = [
   `${BASE}/`, `${BASE}/leaderboard`, `${BASE}/methodology`,
@@ -470,6 +515,10 @@ const urls = [
   ...(LINEUP_LEAGUES.length ? [`${BASE}/methodology/lineups`] : []),
   ...VALUE_LEAGUES.map((lg) => `${BASE}/value/${lg}`),
   ...(VALUE_LEAGUES.length ? [`${BASE}/methodology/value`] : []),
+  ...COACHING_LEAGUES.map((lg) => `${BASE}/coaching/${lg}`),
+  ...(COACHING_LEAGUES.length ? [`${BASE}/methodology/coaching`] : []),
+  ...DEFENSE_LEAGUES.map((lg) => `${BASE}/defense/${lg}`),
+  ...(DEFENSE_LEAGUES.length ? [`${BASE}/methodology/defense`] : []),
   ...(existsSync(join(ROOT, "public", "calibration-NBA.json"))
     ? LEAGUES.map((lg) => `${BASE}/calibration/${lg}`) : []),
   ...[...latestByPlayer.values()]

@@ -9,11 +9,15 @@ import Landing from "./views/Landing";
 import Leaderboard from "./views/Leaderboard";
 import LineupsBoard from "./views/boards/LineupsBoard";
 import ValueBoard from "./views/boards/ValueBoard";
+import CoachingBoard from "./views/boards/CoachingBoard";
+import DefenseBoard from "./views/boards/DefenseBoard";
 import Calibration from "./views/Calibration";
 import Player from "./views/Player";
 import Methodology from "./views/Methodology";
 import MethodologyLineups from "./views/MethodologyLineups";
 import MethodologyValue from "./views/MethodologyValue";
+import MethodologyCoaching from "./views/MethodologyCoaching";
+import MethodologyDefense from "./views/MethodologyDefense";
 import LineupDetail from "./views/LineupDetail";
 import OpenData from "./views/OpenData";
 import Compare from "./views/Compare";
@@ -43,6 +47,18 @@ function LineupsIndex() {
 function CalibrationIndex() {
   const { league } = useLeague();
   return <Navigate to={`/calibration/${league}`} replace />;
+}
+
+/** /coaching (no league) -> the active league's board. */
+function CoachingIndex() {
+  const { league } = useLeague();
+  return <Navigate to={`/coaching/${league}`} replace />;
+}
+
+/** /defense (no league) -> the active league's board. */
+function DefenseIndex() {
+  const { league } = useLeague();
+  return <Navigate to={`/defense/${league}`} replace />;
 }
 
 /** /value (no league) -> the active league's board. */
@@ -95,11 +111,17 @@ export default function App() {
           <Route path="/lineups/:lg/:lineupId" element={<LineupDetail />} />
           <Route path="/value" element={<ValueIndex />} />
           <Route path="/value/:lg" element={<ValueBoard />} />
+          <Route path="/coaching" element={<CoachingIndex />} />
+          <Route path="/coaching/:lg" element={<CoachingBoard />} />
+          <Route path="/defense" element={<DefenseIndex />} />
+          <Route path="/defense/:lg" element={<DefenseBoard />} />
           <Route path="/calibration" element={<CalibrationIndex />} />
           <Route path="/calibration/:lg" element={<Calibration />} />
           <Route path="/methodology" element={<Methodology />} />
           <Route path="/methodology/lineups" element={<MethodologyLineups />} />
           <Route path="/methodology/value" element={<MethodologyValue />} />
+          <Route path="/methodology/coaching" element={<MethodologyCoaching />} />
+          <Route path="/methodology/defense" element={<MethodologyDefense />} />
           <Route path="/data" element={<OpenData />} />
           <Route path="/compare" element={<Compare />} />
           <Route path="/league" element={<League />} />

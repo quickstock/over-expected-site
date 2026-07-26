@@ -113,15 +113,19 @@ def check_registry_layer_files():
         fail(f"ACTIVE_LEAGUES references leagues with no data file: {missing}")
     else:
         ok(f"all {len(leagues)} active leagues have data-*.json")
-    # layers flagged in the registry must have their artifact
+    # layers flagged in the registry must have their artifact. One row per
+    # layer, so adding a layer is a row here rather than another if-block.
+    layer_files = {"lineups": "rapm", "value": "value",
+                   "coaching": "coaching", "defense": "defense"}
     for lg in leagues:
         block = re.search(rf'{lg}:\s*{{(.*?)\n  }},', reg, re.S)
-        if block and "lineups: true" in block.group(1):
-            if not (PUBLIC / f"rapm-{lg}.json").exists():
-                fail(f"{lg} declares layers.lineups but rapm-{lg}.json is missing")
-        if block and "value: true" in block.group(1):
-            if not (PUBLIC / f"value-{lg}.json").exists():
-                fail(f"{lg} declares layers.value but value-{lg}.json is missing")
+        if not block:
+            continue
+        for layer, prefix in layer_files.items():
+            if f"{layer}: true" in block.group(1):
+                if not (PUBLIC / f"{prefix}-{lg}.json").exists():
+                    fail(f"{lg} declares layers.{layer} but "
+                         f"{prefix}-{lg}.json is missing")
     ok("declared layers have their artifacts")
 
 
@@ -135,6 +139,16 @@ REQUIRED_ROW_FIELDS = {
                      "oP", "dP", "netP", "seO", "seD", "netCi", "tier"]),
     "value-*.json": (["players", "*", "*"],
                      ["id", "name", "teams", "poss", "share", "net", "war"]),
+    # Layer 3: the board dereferences every one of these per team row, and
+    # `ci` is indexed as a pair, so a scalar would throw the same way.
+    "coaching-*.json": (["teams", "*"],
+                        ["team", "teamId", "decisions", "etm", "ci", "tier"]),
+    # Layer 4: sorted and bar-scaled by the three pillar keys, so a missing
+    # one yields NaN geometry rather than a visible error.
+    "defense-*.json": (["teams", "*", "*"],
+                       ["team", "teamId", "defPoss", "shotsFaced",
+                        "qualityForced", "deterrence", "suppression",
+                        "rimRate", "ptsAllowed100"]),
 }
 
 

@@ -11,6 +11,8 @@ import type {
   PlayerSeasonChunk,
   RapmData,
   CalibrationData,
+  CoachingData,
+  DefenseData,
   SiteData,
   ValueData,
 } from "./types";
@@ -274,6 +276,31 @@ export type ValueState =
 /** The league's value/surplus dataset (value-{LG}.json). */
 export function useValue(league: League): ValueState {
   const r = useLayerFile<ValueData>(`value-${league}.json`);
+  if (r.status === "ready") return { status: "ready", data: r.data! };
+  return { status: r.status };
+}
+
+export type CoachingState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; data: CoachingData };
+
+/** The league's decision-EV dataset (coaching-{LG}.json). */
+export function useCoaching(league: League): CoachingState {
+  const r = useLayerFile<CoachingData>(`coaching-${league}.json`);
+  if (r.status === "ready") return { status: "ready", data: r.data! };
+  return { status: r.status };
+}
+
+export type DefenseState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; data: DefenseData };
+
+/** The league's team-defence dataset (defense-{LG}.json). Privileged and
+    NBA-only; the board renders the unavailable panel elsewhere. */
+export function useDefense(league: League): DefenseState {
+  const r = useLayerFile<DefenseData>(`defense-${league}.json`);
   if (r.status === "ready") return { status: "ready", data: r.data! };
   return { status: r.status };
 }

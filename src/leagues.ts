@@ -66,6 +66,14 @@ export interface LeagueDef {
         per-player salaries are available (NBA only; the European leagues
         publish none). */
     value?: boolean;
+    /** Coaching board: decision expected-value on the end-game 2-vs-3
+        choice. Needs play-by-play with a clock, so NBA only for now. */
+    coaching?: boolean;
+    /** Team-defence board. Privileged and NBA-only: it needs shot-level
+        expected points against a reconstructed five-man defensive lineup,
+        which no European league publishes. Deliberately team-level — the
+        player version failed validation and is not shipped. */
+    defense?: boolean;
   };
 }
 
@@ -100,7 +108,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     hasStory: true,
     sourceCredit:
       "Underlying play-by-play and tracking aggregates are NBA.com data.",
-    layers: { lineups: true, value: true },
+    layers: { lineups: true, value: true, coaching: true, defense: true },
   },
   EL: {
     code: "EL",
