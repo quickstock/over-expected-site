@@ -95,6 +95,16 @@ const LINEUP_LEAGUES = LEAGUES.filter((lg) =>
 const VALUE_LEAGUES = LEAGUES.filter((lg) =>
   existsSync(join(ROOT, "public", `value-${lg}.json`)),
 );
+/** Card ranges are read from the artifacts, not hardcoded: a number baked
+    into a social card silently overstates its metric the first time a season
+    updates. */
+function layerJson(name) {
+  const f = join(ROOT, "public", name);
+  return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
+}
+const coachingJson = layerJson("coaching-NBA.json");
+const defenseJson = layerJson("defense-NBA.json");
+
 const COACHING_LEAGUES = LEAGUES.filter((lg) =>
   existsSync(join(ROOT, "public", `coaching-${lg}.json`)),
 );
@@ -260,11 +270,17 @@ function genericCard() {
   };
 }
 
-/** One shared card for the lineups layer. Individual lineups deliberately get
-    no card: at ~900 qualified lineups per season that would multiply the
-    render count for pages nobody unfurls, and the build already sits near the
-    renderer's practical ceiling. */
-function lineupsCard() {
+/** One shared card per layer. Layer *entities* deliberately get no card: at
+    ~900 qualified lineups per season that would multiply the render count for
+    pages nobody unfurls, and the build already sits near the renderer's
+    practical ceiling. Parameterised because a card whose subtitle reads
+    "lineups & RAPM" on the decision-EV page misdescribes it to anyone who
+    shares the link — four layers means four kickers, not one reused. */
+function layerCard({ leagues, kicker, headline, scale }) {
+  // Poles follow which END IS GOOD, not which is numerically larger:
+  // decision EV is better at zero, so its low value takes the warm pole.
+  const loPole = scale.lowerIsBetter ? THEME.NBA.warm : THEME.NBA.cool;
+  const hiPole = scale.lowerIsBetter ? THEME.NBA.cool : THEME.NBA.warm;
   return {
     type: "div",
     props: {
@@ -273,18 +289,18 @@ function lineupsCard() {
         backgroundColor: PAPER, padding: 72, justifyContent: "space-between",
       },
       children: [
-        { type: "div", props: { style: { fontFamily: "JetBrains Mono", fontWeight: 400, fontSize: 26, color: FAINT }, children: `${LINEUP_LEAGUES.map((lg) => LEAGUE_LABEL[lg]).join(" · ")} · lineups & RAPM` } },
+        { type: "div", props: { style: { fontFamily: "JetBrains Mono", fontWeight: 400, fontSize: 26, color: FAINT }, children: `${leagues.map((lg) => LEAGUE_LABEL[lg]).join(" · ")} · ${kicker}` } },
         {
           type: "div",
           props: {
             style: { display: "flex", flexDirection: "column", gap: 14 },
             children: [
-              { type: "div", props: { style: { fontFamily: "Bricolage Grotesque", fontSize: 104, color: INK, lineHeight: 1.02 }, children: "Every lineup, over expected." } },
+              { type: "div", props: { style: { fontFamily: "Bricolage Grotesque", fontSize: 104, color: INK, lineHeight: 1.02 }, children: headline } },
               { type: "div", props: { style: { display: "flex", fontFamily: "JetBrains Mono", fontWeight: 400, fontSize: 30, color: SOFT }, children: [
-                { type: "span", props: { style: { color: THEME.NBA.cool }, children: signed(-8) } },
-                { type: "span", props: { children: " to " } },
-                { type: "span", props: { style: { color: THEME.NBA.warm }, children: signed(8) } },
-                { type: "span", props: { children: " net points per 100, adjusted" } },
+                { type: "span", props: { style: { color: loPole }, children: scale.lo } },
+                { type: "span", props: { children: "\u00a0to\u00a0" } },
+                { type: "span", props: { style: { color: hiPole }, children: scale.hi } },
+                { type: "span", props: { children: `\u00a0${scale.unit}` } },
               ] } },
             ],
           },
@@ -418,7 +434,11 @@ shell({
 
 // ---- lineups / RAPM layer
 if (LINEUP_LEAGUES.length) {
-  await renderPng(lineupsCard(), join(DIST, "og", "lineups.png"));
+  await renderPng(layerCard({
+    leagues: LINEUP_LEAGUES, kicker: "lineups & RAPM",
+    headline: "Every lineup, over expected.",
+    scale: { lo: signed(-8), hi: signed(8), unit: "net points per 100, adjusted" },
+  }), join(DIST, "og", "lineups.png"));
   for (const lg of LINEUP_LEAGUES) {
     shell({
       title: `Lineups & RAPM · ${LEAGUE_LABEL[lg]} · Over Expected`,
@@ -448,14 +468,19 @@ if (existsSync(join(ROOT, "public", "calibration-NBA.json"))) {
   }
 }
 
-// ---- value layer (shares the lineups card: same underlying impact metric)
+// ---- value layer
 if (VALUE_LEAGUES.length) {
+  await renderPng(layerCard({
+    leagues: VALUE_LEAGUES, kicker: "value over replacement",
+    headline: "Wins above a replacement.",
+    scale: { lo: "0", hi: "12", unit: "wins over replacement" },
+  }), join(DIST, "og", "value.png"));
   for (const lg of VALUE_LEAGUES) {
     shell({
       title: `Value · ${LEAGUE_LABEL[lg]} · Over Expected`,
       description: `Wins over replacement for every qualified ${LEAGUE_LABEL[lg]} player, built on adjusted plus-minus rather than a box-score estimate of it, plus contract surplus wherever per-player salaries are public.`,
       path: `/value/${lg}`,
-      image: "lineups.png",
+      image: "value.png",
     });
   }
   shell({
@@ -463,19 +488,29 @@ if (VALUE_LEAGUES.length) {
     description:
       "How wins over replacement is computed, why adjusted plus-minus replaces Box Plus/Minus in the VORP formula, and why the surplus column is absent rather than estimated when salaries aren't public.",
     path: "/methodology/value",
-    image: "lineups.png",
+    image: "value.png",
   });
 }
 
 // ---- coaching / decision-EV layer (Layer 3). Shares the lineups card: one
 // card per layer, never per entity, to keep the render count in its envelope.
 if (COACHING_LEAGUES.length) {
+  await renderPng(layerCard({
+    leagues: COACHING_LEAGUES, kicker: "decision expected-value",
+    headline: "The right call, not the lucky one.",
+    scale: {
+      lo: coachingJson.meta.spread.bestEtm.toFixed(2),
+      hi: coachingJson.meta.spread.worstEtm.toFixed(2),
+      lowerIsBetter: true,
+      unit: "points of win probability given up",
+    },
+  }), join(DIST, "og", "coaching.png"));
   for (const lg of COACHING_LEAGUES) {
     shell({
       title: `Decision EV · ${LEAGUE_LABEL[lg]} · Over Expected`,
       description: `The end-game two-versus-three decision in ${LEAGUE_LABEL[lg]}, scored on expected win probability at the moment of the choice rather than on whether the shot went in.`,
       path: `/coaching/${lg}`,
-      image: "lineups.png",
+      image: "coaching.png",
     });
   }
   shell({
@@ -483,18 +518,28 @@ if (COACHING_LEAGUES.length) {
     description:
       "How the end-game shot-selection decision is valued, why the outcome is never an input, and why teams are grouped into overlap tiers rather than ranked one to thirty.",
     path: "/methodology/coaching",
-    image: "lineups.png",
+    image: "coaching.png",
   });
 }
 
 // ---- team defence layer (Layer 4)
 if (DEFENSE_LEAGUES.length) {
+  await renderPng(layerCard({
+    leagues: DEFENSE_LEAGUES, kicker: "team defence",
+    headline: "The shots a defence forces.",
+    scale: (() => {
+      const v = Object.values(defenseJson.teams).flat().map((t) => t.qualityForced);
+      const m = Math.max(...v.map(Math.abs));
+      return { lo: `\u2212${m.toFixed(2)}`, hi: `+${m.toFixed(2)}`,
+               unit: "expected points per shot vs league" };
+    })(),
+  }), join(DIST, "og", "defense.png"));
   for (const lg of DEFENSE_LEAGUES) {
     shell({
       title: `Team defence · ${LEAGUE_LABEL[lg]} · Over Expected`,
       description: `${LEAGUE_LABEL[lg]} team defence split into the shot quality a defence forces and whether opponents then converted below expectation, with the measured reliability of each.`,
       path: `/defense/${lg}`,
-      image: "lineups.png",
+      image: "defense.png",
     });
   }
   shell({
@@ -502,7 +547,7 @@ if (DEFENSE_LEAGUES.length) {
     description:
       "Why this layer is team-level and the player version was rejected on evidence, the reliability of each pillar, and what public defensive data cannot separate.",
     path: "/methodology/defense",
-    image: "lineups.png",
+    image: "defense.png",
   });
 }
 
