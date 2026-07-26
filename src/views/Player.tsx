@@ -200,8 +200,11 @@ export default function Player() {
   const league = (lg && ACTIVE_LEAGUES.includes(lg as League)
     ? lg
     : ACTIVE_LEAGUES[0]) as League;
-  // league is clamped to an ACTIVE_LEAGUE, all of which are loaded on boot.
-  const data = useLeagueData(league)!;
+  // Leagues load independently since the incremental-boot change, so this
+  // league's dataset may still be in flight on a cold deep link — undefined
+  // here means loading, and the guard below (after the hooks) shows the
+  // skeleton rather than crashing or mislabelling it "not found".
+  const data = useLeagueData(league);
   const { league: activeLeague, setLeague } = useLeague();
   // Keep the nav toggle in sync with the player being viewed.
   useEffect(() => {
@@ -215,10 +218,11 @@ export default function Player() {
     ? params.get("lens")
     : "fouls") as Lens;
 
-  const qualify = data.meta.qualifyPossessions;
+  const qualify = data?.meta.qualifyPossessions ?? 0;
 
   // Qualified player-season rows for this id, in league season order.
   const rows = useMemo(() => {
+    if (!data) return [];
     const mine = data.leaderboard.filter(
       (r) => r.id === id && r.pct !== null,
     );
@@ -234,6 +238,7 @@ export default function Player() {
       string,
       { poss: number; ftaoe: number; fta: number; xfta: number; n: number }
     >();
+    if (!data) return { byId, pool: [] as number[] };
     for (const r of data.leaderboard) {
       if (r.pct === null) continue;
       const c =
@@ -251,7 +256,7 @@ export default function Player() {
     }
     pool.sort((a, b) => a - b);
     return { byId, pool };
-  }, [data.leaderboard]);
+  }, [data]);
 
   const seasons = rows.map((r) => r.season);
   const requested = params.get("season");
@@ -265,6 +270,14 @@ export default function Player() {
   useTitle(row ? `${row.name} · Over Expected` : "Over Expected");
   const animatedPer100 = useCountUp(row?.per100 ?? 0);
 
+  // League file still in flight (cold deep link): skeleton, not "not found".
+  if (!data)
+    return (
+      <div className="mx-auto max-w-5xl px-6 py-24" aria-busy="true">
+        <div className="h-10 w-72 animate-pulse rounded bg-wash" />
+        <div className="mt-6 h-64 animate-pulse rounded bg-wash" />
+      </div>
+    );
   if (!row || !season) return <NotFound qualify={qualify} />;
 
   const detail =
