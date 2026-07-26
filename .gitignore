@@ -5,3 +5,6 @@ tsconfig.tsbuildinfo
 .vercel
 .vite/
 .env*
+
+__pycache__/
+*.pyc
