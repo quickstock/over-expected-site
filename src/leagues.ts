@@ -38,6 +38,11 @@ export interface LeagueDef {
       negative blue-family, in every league. */
   warm: Oklch;
   cool: Oklch;
+  /** The league's own identity color — the logo, the active nav underline,
+      the league-picker dot. Independent of the warm/cool diverging poles
+      (which encode positive/negative, not brand): NBA's brand is blue even
+      though positive NBA stats read warm/red like everywhere else. */
+  brand: Oklch;
   /** FTAOE per-100 at which the color scale saturates. */
   scaleMax: number;
   /** Court geometry for the shot-zone chart. */
@@ -99,6 +104,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "NBA",
     warm: { l: 0.58, c: 0.185, h: 38 },
     cool: { l: 0.5, c: 0.18, h: 256 },
+    brand: { l: 0.5, c: 0.18, h: 256 },
     scaleMax: 12,
     court: "nba",
     sftaOnly: true,
@@ -119,6 +125,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "EL",
     warm: { l: 0.62, c: 0.195, h: 45 },
     cool: COOL_BLUE,
+    brand: { l: 0.62, c: 0.195, h: 45 },
     ...EURO_DEFAULTS,
     sourceCredit: "Underlying play-by-play is EuroLeague public data.",
   },
@@ -129,6 +136,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "EuroCup",
     warm: { l: 0.6, c: 0.16, h: 95 },
     cool: { l: 0.52, c: 0.14, h: 265 },
+    brand: { l: 0.6, c: 0.16, h: 95 },
     ...EURO_DEFAULTS,
     sourceCredit: "Underlying play-by-play is EuroCup public data.",
   },
@@ -139,6 +147,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "ACB",
     warm: { l: 0.52, c: 0.19, h: 15 },
     cool: COOL_BLUE,
+    brand: { l: 0.52, c: 0.19, h: 15 },
     ...EURO_DEFAULTS,
     sourceCredit: "Underlying play-by-play is Liga ACB public data.",
   },
@@ -149,6 +158,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "BSL",
     warm: { l: 0.6, c: 0.215, h: 30 },
     cool: COOL_BLUE,
+    brand: { l: 0.6, c: 0.215, h: 30 },
     ...EURO_DEFAULTS,
     sourceCredit:
       "Underlying play-by-play is Basketbol Süper Ligi public data.",
@@ -160,6 +170,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "LBA",
     warm: { l: 0.5, c: 0.15, h: 310 },
     cool: { l: 0.55, c: 0.16, h: 150 },
+    brand: { l: 0.55, c: 0.16, h: 150 },
     ...EURO_DEFAULTS,
     sourceCredit:
       "Underlying play-by-play is Lega Basket Serie A public data.",
@@ -171,6 +182,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "Pro A",
     warm: { l: 0.5, c: 0.19, h: 295 },
     cool: { l: 0.52, c: 0.13, h: 155 },
+    brand: { l: 0.5, c: 0.19, h: 295 },
     ...EURO_DEFAULTS,
     sourceCredit: "Underlying play-by-play is LNB Betclic Élite public data.",
   },
@@ -181,6 +193,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "GBL",
     warm: { l: 0.5, c: 0.16, h: 340 },
     cool: { l: 0.58, c: 0.13, h: 210 },
+    brand: { l: 0.58, c: 0.13, h: 210 },
     ...EURO_DEFAULTS,
     sourceCredit:
       "Underlying play-by-play is Greek Basket League public data.",
@@ -192,6 +205,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "BBL",
     warm: { l: 0.68, c: 0.14, h: 85 },
     cool: COOL_BLUE,
+    brand: { l: 0.68, c: 0.14, h: 85 },
     ...EURO_DEFAULTS,
     sourceCredit:
       "Underlying play-by-play is Basketball Bundesliga public data.",
@@ -203,6 +217,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "ABA",
     warm: { l: 0.5, c: 0.16, h: 330 },
     cool: { l: 0.53, c: 0.11, h: 180 },
+    brand: { l: 0.53, c: 0.11, h: 180 },
     ...EURO_DEFAULTS,
     sourceCredit: "Underlying play-by-play is ABA Liga public data.",
   },
@@ -213,6 +228,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     short: "WNBA",
     warm: { l: 0.55, c: 0.2, h: 25 },
     cool: { l: 0.5, c: 0.15, h: 250 },
+    brand: { l: 0.55, c: 0.2, h: 25 },
     scaleMax: 18,
     court: "nba",
     sftaOnly: false,

@@ -119,7 +119,7 @@ export default function LineupDetail() {
       <h1 className="mt-4 font-display text-2xl font-bold tracking-tight sm:text-3xl">
         {row.players.map((p, i) => (
           <span key={row.playerIds[i]}>
-            <Link to={`/player/${league}/${row.playerIds[i]}`} className="hover:underline decoration-warm decoration-2 underline-offset-4">{p}</Link>
+            <Link to={`/player/${league}/${row.playerIds[i]}`} className="hover:underline decoration-brand decoration-2 underline-offset-4">{p}</Link>
             {i < row.players.length - 1 ? <span className="text-ink-faint">, </span> : null}
           </span>
         ))}
@@ -141,7 +141,7 @@ export default function LineupDetail() {
         positive means the lineup's average expected points per shot beats its
         members' individual averages. Single-lineup samples are noisy and don't
         persist out of sample; read this as description.{" "}
-        <Link to="/methodology/lineups" className="underline decoration-warm decoration-2 underline-offset-2">Method →</Link>
+        <Link to="/methodology/lineups" className="underline decoration-brand decoration-2 underline-offset-2">Method →</Link>
       </p>
 
       {games.length > 0 && (

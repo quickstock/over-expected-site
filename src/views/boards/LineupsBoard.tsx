@@ -277,7 +277,7 @@ export default function LineupsBoard() {
           thin-minutes players toward what their box score suggests;{" "}
           <span className="font-medium">plain ridge</span> pulls them toward zero.
           Whiskers on the scatter are ±1 standard error.{" "}
-          <Link to="/methodology/lineups" className="underline decoration-warm decoration-2 underline-offset-2">How this is built →</Link>
+          <Link to="/methodology/lineups" className="underline decoration-brand decoration-2 underline-offset-2">How this is built →</Link>
         </p>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
           <span className="font-medium text-ink">Players are grouped in tiers, not
@@ -305,7 +305,7 @@ export default function LineupsBoard() {
                 : Math.abs(oos.r) < 0.1
                   ? `Synergy does not carry forward: a lineup's first-half figure predicts its second half at r=${oos.r.toFixed(2)} (n=${oos.n}), which is nothing. Read the numbers below as what happened, not as what happens next.`
                   : `A lineup's first-half synergy predicts its second half at r=${oos.r.toFixed(2)} (n=${oos.n}).`}{" "}
-              <Link to="/methodology/lineups" className="underline decoration-warm decoration-2 underline-offset-2">Method →</Link>
+              <Link to="/methodology/lineups" className="underline decoration-brand decoration-2 underline-offset-2">Method →</Link>
             </p>
           </div>
           <LineupsTab rows={data.lineups[season] ?? []} lg={league} season={season} />

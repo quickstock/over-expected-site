@@ -225,7 +225,7 @@ export default function MethodologyLineups() {
       </div>
 
       <p className="mt-14 text-sm text-ink-faint">
-        <Link to="/lineups/NBA" className="underline decoration-warm decoration-2 underline-offset-2">
+        <Link to="/lineups/NBA" className="underline decoration-brand decoration-2 underline-offset-2">
           Back to the lineups board →
         </Link>
       </p>

@@ -20,7 +20,7 @@ function useNavItems() {
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `font-display text-sm font-medium tracking-wide transition-colors duration-150 ${
     isActive
-      ? "text-ink underline decoration-warm decoration-2 underline-offset-4"
+      ? "text-ink underline decoration-brand decoration-2 underline-offset-4"
       : "text-ink-soft hover:text-ink"
   }`;
 
@@ -111,7 +111,7 @@ function LeaguePicker() {
                 >
                   {LEAGUE_DEFS[lg].label}
                   {league === lg && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-warm" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                   )}
                 </button>
               </li>
@@ -187,7 +187,7 @@ export default function Nav({ onSearch }: { onSearch: () => void }) {
             to="/"
             className="font-display text-2xl font-bold tracking-tight text-ink sm:text-[28px]"
           >
-            <span className="text-warm">O</span>E
+            <span className="text-brand">O</span>E
             <span className="ml-2.5 hidden font-serif text-[15px] font-normal text-ink-faint sm:inline">
               over expected
             </span>

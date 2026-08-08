@@ -75,6 +75,7 @@ function ThemeVars() {
     const root = document.documentElement;
     root.style.setProperty("--color-warm", oklchCss(def.warm));
     root.style.setProperty("--color-cool", oklchCss(def.cool));
+    root.style.setProperty("--color-brand", oklchCss(def.brand));
     root.dataset.league = league;
   }, [league]);
   return null;
