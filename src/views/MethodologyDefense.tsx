@@ -24,12 +24,13 @@ export default function MethodologyDefense() {
         Team defence
       </h1>
       <p className="mt-4 text-base leading-relaxed text-ink-soft sm:text-lg">
-        Two separable questions: how bad were the shots a defence forced, and
-        did opponents then convert below what those shots were worth. One is
-        much more reliably measured than the other, and the board says which.
+        Three questions, kept apart: how bad were the shots a defence forced,
+        how well did it keep the ball away from the rim, and did opponents then
+        miss more than those shots were worth. The third is measured far less
+        reliably than the first two, and the board says so on every screen.
       </p>
 
-      <h2 className={H2}>The story worth telling first: what didn't ship</h2>
+      <h2 className={H2}>What didn't ship, and why</h2>
       <div className={BODY}>
         <p>
           This layer was originally built as a{" "}
@@ -42,9 +43,9 @@ export default function MethodologyDefense() {
           <span className="font-mono tnum">
             {meta ? meta.playerLevelRejected.spearmanBrown.toFixed(3) : "0.348"}
           </span>{" "}
-          — at season sample sizes, mostly noise. And the leaderboard failed the
-          laugh test badly, placing players no one considers good defenders among
-          the league's best.
+          , which at season sample sizes is mostly noise. And the leaderboard
+          failed the laugh test badly, putting players nobody considers good
+          defenders among the league's best.
         </p>
         <p>
           The cause is structural rather than tunable:{" "}
@@ -67,7 +68,7 @@ export default function MethodologyDefense() {
         </p>
       </div>
 
-      <h2 className={H2}>The two pillars, and their reliability</h2>
+      <h2 className={H2}>The three pillars, and their reliability</h2>
       <div className={BODY}>
         <p>
           The same split-half test that rejected the player metric was run on the
@@ -120,8 +121,8 @@ export default function MethodologyDefense() {
           </strong>{" "}
           is expected points per shot faced, measured against the league mean and
           signed so positive means worse shots forced. It is the most reliable of
-          the three and the part a defence genuinely controls — it is a
-          statement about shot selection imposed, not about luck.
+          the three and the part a defence genuinely controls: a statement about
+          the shot selection it imposed rather than about luck.
         </p>
         <p>
           <strong className="font-display font-semibold text-ink">
@@ -168,7 +169,7 @@ export default function MethodologyDefense() {
         </p>
       </div>
 
-      <h2 className={H2}>What is missing, named not approximated</h2>
+      <h2 className={H2}>What is missing</h2>
       <div className={BODY}>
         <ul className="list-disc space-y-2 pl-5">
           {(meta?.notModelled ?? []).map((n) => (
@@ -197,10 +198,10 @@ export default function MethodologyDefense() {
 
       <p className="mt-14 border-t border-line pt-6">
         <Link
-          to="/defense/NBA"
+          to="/league?lens=qualityForced"
           className="font-display text-sm font-medium text-ink underline underline-offset-4"
         >
-          See the defence board →
+          See team defence on the League page →
         </Link>
       </p>
     </article>

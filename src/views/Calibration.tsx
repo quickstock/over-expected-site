@@ -149,7 +149,7 @@ export default function Calibration() {
         What this model can and cannot measure
       </h1>
       <p className="mt-4 text-base leading-relaxed text-ink-soft sm:text-lg">
-        Over Expected runs on play-by-play and shot coordinates — no tracking, no
+        Over Expected runs on play-by-play and shot coordinates. No tracking, no
         defender distance, no touch time. This page states what that buys and what
         it costs, with a number attached to every claim and the objections stated
         before you have to raise them. Measured on{" "}
@@ -249,7 +249,7 @@ export default function Calibration() {
                 <td className="py-2 text-right font-mono tnum text-ink-soft">
                   {r.logLoss.toFixed(4)}
                   <span className="ml-1 text-xs text-ink-faint">
-                    {r.logLossVsFull > 0 ? `+${r.logLossVsFull.toFixed(4)}` : "—"}
+                    {r.logLossVsFull > 0 ? `+${r.logLossVsFull.toFixed(4)}` : "–"}
                   </span>
                 </td>
                 <td className="py-2 text-right font-mono tnum text-ink-soft">
@@ -268,7 +268,7 @@ export default function Calibration() {
         <p>
           The obvious objection: the model cannot see how open a shot was, so what
           it calls shot-making might be shot openness. We tested it with NBA
-          tracking aggregates — used only while fitting, never at inference — and{" "}
+          tracking aggregates, used only while fitting and never at inference, and{" "}
           <strong className="text-ink">could not detect it.</strong>
         </p>
         <p className="font-mono text-sm text-ink">
@@ -283,7 +283,7 @@ export default function Calibration() {
         <p>
           Openness explains {(d.number.partialR2 * 100).toFixed(2)}% of the
           residual's variance. The control is the quality of looks taken, included
-          because defences guard good shooters — so openness and true skill are
+          because defences guard good shooters, so openness and true skill are
           negatively related in the population, and an uncontrolled correlation
           would <em>understate</em> contamination. Both are null.
         </p>

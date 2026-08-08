@@ -15,8 +15,8 @@ export default function Footer() {
         <p className="max-w-2xl text-sm leading-relaxed text-ink-soft">
           Shot value, shot-making, and foul-drawing: three reads on the same
           possession-level data, leak-free and anchored to each season's own
-          league rate. The numbers blend playstyle, skill, and officiating —
-          they don't isolate them, and they don't prove referee bias.{" "}
+          league rate. The numbers blend playstyle, skill, and officiating. They
+          don't separate them, and they don't prove referee bias.{" "}
           <Link to="/methodology" className="underline underline-offset-2 hover:text-ink">How it works</Link>.
         </p>
         <p className="mt-4 text-xs text-ink-faint">

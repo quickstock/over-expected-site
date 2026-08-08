@@ -40,14 +40,14 @@ function NetBar({ v }: { v: number }) {
 function Unavailable({ label }: { label: string }) {
   return (
     <div className="mx-auto max-w-xl px-5 py-28 text-center sm:px-8">
-      <p className="font-display text-2xl font-semibold text-ink">
+      <h1 className="font-display text-2xl font-semibold text-ink">
         Lineups aren't built for {label} yet.
-      </p>
+      </h1>
       <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-        RAPM needs full substitution data to reconstruct which five are on
-        the floor for every possession. That pipeline runs for the NBA today;
-        the other leagues' feeds record substitutions without an in/out
-        direction, so their lineups are a later build.
+        Working out who helped needs to know which five were on the floor for
+        every possession. The NBA feed says so. The other leagues log
+        substitutions without recording who came in and who went out, so their
+        lineups are a later build.
       </p>
       <Link
         to="/lineups/NBA"
@@ -145,7 +145,7 @@ function PlayersTab({
                   {r.teams.join(" · ")} · O {signed(o(r), 1)} · D {signed(d(r), 1)}
                 </span>
               </span>
-              <span className="w-12 text-right font-mono tnum text-lg" style={{ color: divergingText(net(r)) }}>{signed(net(r), 1)}</span>
+              <span className="w-14 text-right font-mono tnum text-lg" style={{ color: divergingText(net(r)) }}>{signed(net(r), 1)}</span>
             </div>
           </Link>
         </li>
@@ -178,7 +178,7 @@ function LineupsTab({ rows, lg, season }: { rows: LineupRow[]; lg: League; seaso
                 </span>
                 <span className="flex items-center gap-3">
                   <NetBar v={r.synergy100} />
-                  <span className="w-12 text-right font-mono tnum text-lg" style={{ color: divergingText(r.synergy100) }}>
+                  <span className="w-14 text-right font-mono tnum text-lg" style={{ color: divergingText(r.synergy100) }}>
                     {signed(r.synergy100, 1)}
                   </span>
                 </span>
@@ -269,21 +269,22 @@ export default function LineupsBoard() {
       <div className="mx-auto max-w-5xl px-5 pt-8 sm:px-8 sm:pt-12">
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Lineups &amp; RAPM</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
-          Regularized adjusted plus-minus: each player's points per 100 added on
-          offense and prevented on defense, untangled from teammates and
-          opponents by ridge regression over every possession's ten-man lineup.
-          The <span className="font-medium">prior-informed</span> variant shrinks
-          toward a box-score prior; <span className="font-medium">plain ridge</span>{" "}
-          shrinks toward zero. Whiskers on the scatter are ±1 approximate standard
-          error. <Link to="/methodology/lineups" className="underline decoration-warm decoration-2 underline-offset-2">How this is built →</Link>
+          Plus-minus with the teammate problem taken out. Raw plus-minus credits
+          a player for whoever he happens to share the floor with. This solves
+          the whole league at once, so what is left is how much better his team
+          scored and how much less it conceded per 100 possessions with him out
+          there. <span className="font-medium">Prior-informed</span> pulls
+          thin-minutes players toward what their box score suggests;{" "}
+          <span className="font-medium">plain ridge</span> pulls them toward zero.
+          Whiskers on the scatter are ±1 standard error.{" "}
+          <Link to="/methodology/lineups" className="underline decoration-warm decoration-2 underline-offset-2">How this is built →</Link>
         </p>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
           <span className="font-medium text-ink">Players are grouped in tiers, not
-          ranked.</span> The interval under each figure is the range the estimate is
-          consistent with; where two players' intervals overlap, the data does not
-          say which is better, and numbering them would imply it does. A tier label
-          appears where a band begins. Tiers are computed in the exported data
-          rather than applied here, so they cannot be lost in a redesign.
+          ranked.</span> The range under each number is what the estimate is
+          consistent with. Where two players' ranges overlap, the data cannot say
+          who is better, so numbering them 1 to 200 would claim something it does
+          not know. The tier label marks where a band starts.
         </p>
       </div>
 
@@ -300,10 +301,10 @@ export default function LineupsBoard() {
           <div className="mx-auto mt-6 max-w-5xl px-5 sm:px-8">
             <p className="rounded-md bg-wash px-4 py-3 text-xs leading-relaxed text-ink-soft">
               {oos.r === null
-                ? `Out-of-sample check: too few lineups repeat across halves to test whether synergy persists (n=${oos.n}).`
+                ? `Too few lineups repeat across halves of a season to test whether this holds up (n=${oos.n}).`
                 : Math.abs(oos.r) < 0.1
-                  ? `Out-of-sample, lineup synergy shows essentially no predictive value: first-half synergy correlates r=${oos.r.toFixed(2)} (n=${oos.n}) with next-half overperformance. Read these as a description of what happened, not a forecast.`
-                  : `Out-of-sample, first-half synergy correlates r=${oos.r.toFixed(2)} (n=${oos.n}) with next-half overperformance.`}{" "}
+                  ? `Synergy does not carry forward: a lineup's first-half figure predicts its second half at r=${oos.r.toFixed(2)} (n=${oos.n}), which is nothing. Read the numbers below as what happened, not as what happens next.`
+                  : `A lineup's first-half synergy predicts its second half at r=${oos.r.toFixed(2)} (n=${oos.n}).`}{" "}
               <Link to="/methodology/lineups" className="underline decoration-warm decoration-2 underline-offset-2">Method →</Link>
             </p>
           </div>

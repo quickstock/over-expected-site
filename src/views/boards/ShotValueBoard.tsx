@@ -8,6 +8,7 @@ import { divergingColor } from "../../lib/color";
 import { int, signed } from "../../lib/format";
 import { Delta } from "../../components/Delta";
 import SegmentedControl from "../../components/SegmentedControl";
+import SortHeader, { cycleSort } from "../../components/SortHeader";
 
 type Mode = "value" | "making";
 type SortKey = "poe100" | "makeOE" | "xptsShot" | "ftaoe100" | "fgPoe100";
@@ -58,28 +59,6 @@ function QualBar({ value, lo = 0.85, hi = 1.65 }: { value: number; lo?: number; 
   );
 }
 
-function SortHeader({ k, label, sort, dir, onSort, className = "" }: {
-  k: SortKey; label?: string; sort: SortKey; dir: "asc" | "desc";
-  onSort: (k: SortKey) => void; className?: string;
-}) {
-  const active = sort === k;
-  return (
-    <button
-      type="button"
-      onClick={() => onSort(k)}
-      aria-pressed={active}
-      className={`font-display text-[11px] font-medium uppercase tracking-wider transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
-        active ? "text-ink" : "text-ink-faint hover:text-ink-soft"
-      } ${className}`}
-    >
-      {label ?? SORT_LABEL[k]}
-      <span className="ml-1 inline-block w-2 font-mono">
-        {active ? (dir === "desc" ? "↓" : "↑") : ""}
-      </span>
-    </button>
-  );
-}
-
 export default function ShotValueBoard({ lens, lensControl }: {
   lens: Mode; lensControl: ReactNode;
 }) {
@@ -101,9 +80,12 @@ export default function ShotValueBoard({ lens, lensControl }: {
   const season = seasons.includes(params.get("season") ?? "")
     ? (params.get("season") as string)
     : latest;
-  const sort = (validSorts.includes((params.get("sort") ?? "") as SortKey)
-    ? params.get("sort")
-    : HEADLINE[lens]) as SortKey;
+  // Explicit sort = the user clicked a column; null = the lens's own
+  // headline order, which renders with no direction indicator.
+  const explicit = validSorts.includes((params.get("sort") ?? "") as SortKey)
+    ? (params.get("sort") as SortKey)
+    : null;
+  const sort = explicit ?? HEADLINE[lens];
   const dir = params.get("dir") === "asc" ? "asc" : "desc";
   // ACB exposes no public position data; hide the filter there.
   const hasPositions = data.leaderboard.some((r) => r.pos);
@@ -125,8 +107,20 @@ export default function ShotValueBoard({ lens, lensControl }: {
       setParams(next, { replace: false });
     });
   };
-  const onSort = (k: SortKey) =>
-    update(k === sort ? { dir: dir === "desc" ? "asc" : "desc" } : { sort: k, dir: "desc" });
+  const onSort = (k: SortKey) => {
+    const next = cycleSort(k, explicit, dir);
+    startTransition(() => {
+      const p = new URLSearchParams(params);
+      if (next) {
+        p.set("sort", next.sort);
+        p.set("dir", next.dir);
+      } else {
+        p.delete("sort");
+        p.delete("dir");
+      }
+      setParams(p, { replace: false });
+    });
+  };
 
   const rows = useMemo(() => {
     const mul = dir === "asc" ? 1 : -1;
@@ -135,9 +129,14 @@ export default function ShotValueBoard({ lens, lensControl }: {
       .sort((a, b) => mul * ((a[sort as keyof ShotValueRow] as number) - (b[sort as keyof ShotValueRow] as number)));
   }, [byseason, season, sort, dir, pos, minPoss]);
 
+  // The last track has to hold the 5rem bar, the 0.75rem gap and a 3.5rem
+  // numeral. It used to be 7.5rem, which is 20px short, and `.cv-row`'s
+  // content-visibility carries paint containment: the overflow was clipped
+  // rather than bleeding, so every leader at ±10.0 or more silently lost its
+  // last digit.
   const GRID = lens === "value"
-    ? "grid-cols-[2.5rem_minmax(0,1fr)_6.5rem_6.5rem_6rem_7.5rem]"
-    : "grid-cols-[2.5rem_minmax(0,1fr)_7rem_6rem_8rem]";
+    ? "grid-cols-[2.5rem_minmax(0,1fr)_6.5rem_6.5rem_6rem_9.5rem]"
+    : "grid-cols-[2.5rem_minmax(0,1fr)_7rem_6rem_9.5rem]";
 
   return (
     <div>
@@ -185,7 +184,7 @@ export default function ShotValueBoard({ lens, lensControl }: {
         </div>
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 pb-3 sm:hidden">
           {validSorts.map((k) => (
-            <SortHeader key={k} k={k} sort={sort} dir={dir} onSort={onSort} />
+            <SortHeader key={k} k={k} label={SORT_LABEL[k]} sort={explicit} dir={dir} onSort={onSort} />
           ))}
         </div>
       </div>
@@ -196,21 +195,16 @@ export default function ShotValueBoard({ lens, lensControl }: {
         </h1>
         {lens === "value" ? (
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
-            How many points is a shot worth, counting both making it and the
-            fouls it draws.{" "}
-            <span className="font-mono text-[13px]">
-              xPoints = xFG% × points + xFTA × league FT%
-            </span>
-            . Shot-making over expected, expected points per shot (how good are
-            the looks), and the foul-drawing and conversion fused into points
-            over expected per 100 possessions, {season}.
+            What a shot is worth, counting both making it and the fouls it draws.
+            The headline column fuses the two into points over expected per 100
+            possessions, {season}.
           </p>
         ) : (
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
             Did he convert better than the look? Actual FG% against the
-            calibrated, shooter-agnostic xFG% of the shots he took, expressed as
-            field-goal points over expected per 100 possessions, {season}.
-            Foul-drawing is set aside here; see Shot value for the full picture.
+            shooter-agnostic xFG% of the shots he took, as field-goal points over
+            expected per 100 possessions, {season}. Foul-drawing is set aside
+            here; shot value has the full picture.
           </p>
         )}
 
@@ -222,18 +216,18 @@ export default function ShotValueBoard({ lens, lensControl }: {
           </span>
           {lens === "value" ? (
             <>
-              <SortHeader k="makeOE" label="Shot-making" sort={sort} dir={dir} onSort={onSort} className="text-right" />
-              <SortHeader k="xptsShot" sort={sort} dir={dir} onSort={onSort} className="text-right" />
-              <SortHeader k="ftaoe100" sort={sort} dir={dir} onSort={onSort} className="text-right" />
-              <SortHeader k="poe100" sort={sort} dir={dir} onSort={onSort} className="text-right" />
+              <SortHeader k="makeOE" label="Shot-making" sort={explicit} dir={dir} onSort={onSort} className="text-right" />
+              <SortHeader k="xptsShot" label={SORT_LABEL.xptsShot} sort={explicit} dir={dir} onSort={onSort} className="text-right" />
+              <SortHeader k="ftaoe100" label={SORT_LABEL.ftaoe100} sort={explicit} dir={dir} onSort={onSort} className="text-right" />
+              <SortHeader k="poe100" label={SORT_LABEL.poe100} sort={explicit} dir={dir} onSort={onSort} className="text-right" />
             </>
           ) : (
             <>
               <span className="text-right font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
                 FG% / xFG%
               </span>
-              <SortHeader k="makeOE" label="Make OE" sort={sort} dir={dir} onSort={onSort} className="text-right" />
-              <SortHeader k="fgPoe100" sort={sort} dir={dir} onSort={onSort} className="text-right" />
+              <SortHeader k="makeOE" label="Make OE" sort={explicit} dir={dir} onSort={onSort} className="text-right" />
+              <SortHeader k="fgPoe100" label={SORT_LABEL.fgPoe100} sort={explicit} dir={dir} onSort={onSort} className="text-right" />
             </>
           )}
         </div>
@@ -282,7 +276,7 @@ export default function ShotValueBoard({ lens, lensControl }: {
                         {/* combined */}
                         <span className="flex items-center justify-end gap-3">
                           <DivBar value={r.poe100} scale={24} />
-                          <Delta per100={r.poe100} decimals={1} className="w-12 text-right text-lg" />
+                          <Delta per100={r.poe100} decimals={1} className="w-14 text-right text-lg" />
                         </span>
                       </>
                     ) : (
@@ -299,7 +293,7 @@ export default function ShotValueBoard({ lens, lensControl }: {
                         {/* FG points over expected /100 */}
                         <span className="flex items-center justify-end gap-3">
                           <DivBar value={r.fgPoe100} scale={16} />
-                          <Delta per100={r.fgPoe100} decimals={1} className="w-12 text-right text-lg" />
+                          <Delta per100={r.fgPoe100} decimals={1} className="w-14 text-right text-lg" />
                         </span>
                       </>
                     )}

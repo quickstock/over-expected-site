@@ -8,6 +8,7 @@ import { divergingColor, scaleMax } from "../../lib/color";
 import { int, ordinal } from "../../lib/format";
 import { Delta } from "../../components/Delta";
 import SegmentedControl from "../../components/SegmentedControl";
+import SortHeader, { cycleSort } from "../../components/SortHeader";
 
 type SortKey = "per100" | "poss" | "pct";
 
@@ -60,37 +61,6 @@ function PctCell({ pct }: { pct: number | null }) {
   );
 }
 
-function SortHeader({
-  k,
-  sort,
-  dir,
-  onSort,
-  className = "",
-}: {
-  k: SortKey;
-  sort: SortKey;
-  dir: "asc" | "desc";
-  onSort: (k: SortKey) => void;
-  className?: string;
-}) {
-  const active = sort === k;
-  return (
-    <button
-      type="button"
-      onClick={() => onSort(k)}
-      aria-pressed={active}
-      className={`font-display text-[11px] font-medium uppercase tracking-wider transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
-        active ? "text-ink" : "text-ink-faint hover:text-ink-soft"
-      } ${className}`}
-    >
-      {SORT_LABEL[k]}
-      <span className="ml-1 inline-block w-2 font-mono">
-        {active ? (dir === "desc" ? "↓" : "↑") : ""}
-      </span>
-    </button>
-  );
-}
-
 export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNode }) {
   const data = useData();
   const { league } = useLeague();
@@ -105,9 +75,12 @@ export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNo
   const season = seasons.includes(params.get("season") ?? "")
     ? (params.get("season") as string)
     : latest;
-  const sort = (["per100", "poss", "pct"].includes(params.get("sort") ?? "")
-    ? params.get("sort")
-    : "per100") as SortKey;
+  // Explicit sort = the user clicked a column; null = the board's own
+  // headline order (FTAOE/100 desc), which renders with no indicator.
+  const explicit = ["per100", "poss", "pct"].includes(params.get("sort") ?? "")
+    ? (params.get("sort") as SortKey)
+    : null;
+  const sort = explicit ?? "per100";
   const dir = params.get("dir") === "asc" ? "asc" : "desc";
   // ACB exposes no public position data; hide the filter there.
   const hasPositions = data.leaderboard.some((r) => r.pos);
@@ -128,12 +101,20 @@ export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNo
       setParams(next, { replace: false });
     });
   };
-  const onSort = (k: SortKey) =>
-    update(
-      k === sort
-        ? { dir: dir === "desc" ? "asc" : "desc" }
-        : { sort: k, dir: "desc" },
-    );
+  const onSort = (k: SortKey) => {
+    const next = cycleSort(k, explicit, dir);
+    startTransition(() => {
+      const p = new URLSearchParams(params);
+      if (next) {
+        p.set("sort", next.sort);
+        p.set("dir", next.dir);
+      } else {
+        p.delete("sort");
+        p.delete("dir");
+      }
+      setParams(p, { replace: false });
+    });
+  };
 
   const rows = useMemo(() => {
     const mul = dir === "asc" ? 1 : -1;
@@ -208,7 +189,7 @@ export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNo
         {/* mobile sort */}
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 pb-3 sm:hidden">
           {(["per100", "poss", "pct"] as SortKey[]).map((k) => (
-            <SortHeader key={k} k={k} sort={sort} dir={dir} onSort={onSort} />
+            <SortHeader key={k} k={k} label={SORT_LABEL[k]} sort={explicit} dir={dir} onSort={onSort} />
           ))}
         </div>
       </div>
@@ -227,6 +208,46 @@ export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNo
           at <span className="font-mono tnum">0.0</span> by construction.
         </p>
 
+        {/*
+          Read this before sorting the table. FTAOE carries a large body-type
+          gradient that it does not adjust away, and the context model barely
+          separates it from the raw rate. Both are measured, not asserted; the
+          numbers come from meta.confounds, which is generated from the
+          committed model artifacts.
+        */}
+        {data.meta.confounds && (
+          <p className="mt-5 max-w-2xl rounded border border-line-soft bg-wash px-4 py-4 text-sm leading-relaxed text-ink-soft">
+            <span className="font-display font-semibold text-ink">
+              What this board does not adjust for.
+            </span>{" "}
+            Taller players draw more shooting fouls, and FTAOE does not remove
+            that: it correlates{" "}
+            <span className="font-mono tnum">
+              {data.meta.confounds.heightCorr.toFixed(2)}
+            </span>{" "}
+            with height, so roughly{" "}
+            <span className="font-mono tnum">
+              {Math.round(data.meta.confounds.heightR2 * 100)}%
+            </span>{" "}
+            of the spread here is body type rather than foul-drawing craft.
+            Adjusting for context moves the order very little either: FTAOE
+            correlates{" "}
+            <span className="font-mono tnum">
+              {data.meta.confounds.rawRateCorr.toFixed(3)}
+            </span>{" "}
+            with the unadjusted rate. Read this as a reliable measure of how
+            often a player draws shooting fouls, not as a measure of skill net
+            of size.{" "}
+            <Link
+              to="/methodology"
+              className="underline decoration-line underline-offset-2 hover:text-ink"
+            >
+              Why
+            </Link>
+            .
+          </p>
+        )}
+
         {/* desktop header row */}
         <div className="mt-8 hidden grid-cols-[2.75rem_minmax(0,1fr)_7.5rem_6.5rem_11.5rem] items-end gap-x-4 border-b border-line pb-2 sm:grid">
           <span />
@@ -236,10 +257,10 @@ export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNo
           <span className="text-right font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
             FTA vs exp.
           </span>
-          <SortHeader k="pct" sort={sort} dir={dir} onSort={onSort} className="text-left" />
+          <SortHeader k="pct" label={SORT_LABEL.pct} sort={explicit} dir={dir} onSort={onSort} className="text-left" />
           <span className="flex items-center justify-end gap-4 whitespace-nowrap">
-            <SortHeader k="poss" sort={sort} dir={dir} onSort={onSort} />
-            <SortHeader k="per100" sort={sort} dir={dir} onSort={onSort} />
+            <SortHeader k="poss" label={SORT_LABEL.poss} sort={explicit} dir={dir} onSort={onSort} />
+            <SortHeader k="per100" label={SORT_LABEL.per100} sort={explicit} dir={dir} onSort={onSort} />
           </span>
         </div>
 

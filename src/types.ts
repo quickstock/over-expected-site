@@ -147,6 +147,23 @@ export interface SiteData {
       /** NBA export only: shrinkage constant shown in the methodology. */
       paddingK?: number;
     };
+    /**
+     * NBA export only. What FTAOE does *not* adjust for, measured rather than
+     * asserted. Sourced from variant_archetype_vs_linear.json and
+     * variant_raw_baseline.json so the board and the methodology cannot drift
+     * from the artifacts.
+     */
+    confounds?: {
+      /** Correlation of FTAOE/100 with finisher height across player-seasons. */
+      heightCorr: number;
+      heightR2: number;
+      /** Correlation of FTAOE/100 with the unadjusted shooting-foul rate. */
+      rawRateCorr: number;
+      rawRateFullSeasonR: number;
+      ftaoeFullSeasonR: number;
+      /** Adding height+position reproduces a plain linear residual at this r. */
+      archetypeVsLinearCorr: number;
+    };
   };
   leaderboard: LeaderboardRow[];
   distributions: Record<string, number[]>;
@@ -165,7 +182,8 @@ export interface SiteData {
   teams: Record<string, TeamRow[]>;
 }
 
-/** One team-season: shooting fouls drawn (offense) and conceded (defense). */
+/** One team-season: shooting fouls drawn (offense) and conceded (defense),
+    plus the team-level shot-value suite. */
 export interface TeamRow {
   team: string;
   poss: number;
@@ -173,6 +191,13 @@ export interface TeamRow {
   drawn: number;
   /** FTAOE/100 the defense concedes. */
   conceded: number;
+  /** Shot value: expected points of the looks generated per 100 possessions,
+      vs the season's possession-weighted league mean. Null only when the
+      export predates the field or the team-season is missing upstream. */
+  sv100?: number | null;
+  /** Shot-making: FG points over expected per 100 possessions, vs the
+      season's league mean. */
+  make100?: number | null;
 }
 
 /* ---------------------------------------------------------------- */

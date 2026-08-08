@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useData, useLeague, usePlayerChunk } from "../data";
+import { useData, useLeague } from "../data";
 import { LEAGUE_LABEL, leagueDef } from "../leagues";
-import type { GameLine, ShotValueRow } from "../types";
-import { int, lastName } from "../lib/format";
+import type { ShotValueRow } from "../types";
+import { int } from "../lib/format";
 import { Delta } from "../components/Delta";
 import { useTitle } from "../lib/useTitle";
 import SegmentedControl from "../components/SegmentedControl";
-import GapArc from "../components/charts/GapArc";
 import Beeswarm from "../components/charts/Beeswarm";
+import ExpectedVsActual from "../components/charts/ExpectedVsActual";
 import RefStrip from "../components/charts/RefStrip";
 import TeamScatter from "../components/charts/TeamScatter";
 
@@ -85,7 +85,6 @@ export default function Landing() {
   const data = useData();
   const { league } = useLeague();
   const def = leagueDef(league);
-  const LEAGUE_FT = data.meta.leagueFt;
   useTitle(`Over Expected: ${LEAGUE_LABEL[league]} shot value`);
   const seasons = data.meta.seasons;
   const latest = data.meta.defaultSeason;
@@ -113,20 +112,33 @@ export default function Landing() {
     [data.leaderboard, season, qualify],
   );
 
-  // The standout's season, drawn as a shot-value gap.
-  const chunk = usePlayerChunk(season, league);
-  const standout = byValue;
-  const standoutDetail =
-    chunk.status === "ready" && standout ? chunk.chunk[String(standout.id)] : undefined;
-  const valueGames = useMemo<GameLine[]>(() => {
-    const gs = standoutDetail?.games ?? [];
-    const ft = standout?.ftPct ?? LEAGUE_FT;
-    return gs.map((g) => [
-      (g[3] ?? 0) + g[0] * ft,
-      (g[4] ?? 0) + g[1] * LEAGUE_FT,
-      g[2],
-    ]);
-  }, [standoutDetail, standout]);
+  /**
+   * Spearman correlation between what a player shot and what his looks were
+   * worth. Quoted under the chart because the eye can see that the cloud
+   * follows the diagonal but cannot put a number on how tightly, and the number
+   * is the claim. Computed here rather than exported, since it is two sorts
+   * over a list the page already holds.
+   */
+  const moves = useMemo(() => {
+    if (svPool.length < 40) return null;
+    const n = svPool.length;
+    const rank = (key: (r: ShotValueRow) => number) => {
+      const order = [...svPool].sort((a, b) => key(a) - key(b));
+      const m = new Map<string, number>();
+      order.forEach((r, i) => m.set(r.id, i));
+      return svPool.map((r) => m.get(r.id)!);
+    };
+    const a = rank((r) => r.fgPct);
+    const b = rank((r) => r.xfgPct);
+    const mean = (n - 1) / 2;
+    let num = 0, da = 0, db = 0;
+    for (let i = 0; i < n; i++) {
+      num += (a[i] - mean) * (b[i] - mean);
+      da += (a[i] - mean) ** 2;
+      db += (b[i] - mean) ** 2;
+    }
+    return { rho: num / Math.sqrt(da * db) };
+  }, [svPool]);
 
   const teams = data.teams?.[season] ?? [];
   const refs = data.referees?.[season] ?? [];
@@ -236,28 +248,30 @@ export default function Landing() {
         </p>
       </section>
 
-      {/* a player, drawn */}
-      {standout && (
+      {/* the argument: FG% is mostly the shot menu */}
+      {moves && (
         <section className="mt-20 border-t border-line pt-12 sm:mt-28">
-          <SectionHead title={`${standout.name}, drawn`}>
-            Every player gets the season as a gap, his form game by game, his
-            shot chart, and his career, on all three lenses.
+          <SectionHead title="What FG% gets wrong">
+            Field-goal percentage says what a player shot, not how well he shot
+            it. Each dot is a qualified player, placed by what the shots he
+            took were worth against what he actually shot.
           </SectionHead>
-          <div className="mt-6">
-            {standoutDetail ? (
-              <GapArc games={valueGames} height={250} />
-            ) : (
-              <div className="h-[250px] animate-pulse rounded bg-wash" aria-busy="true" />
-            )}
-            <p className="mt-2 text-xs text-ink-faint">
-              Cumulative points generated vs an average shot diet, game by game,{" "}
-              {season}.{" "}
-              <Link
-                to={`/player/${league}/${standout.id}?season=${encodeURIComponent(season)}&lens=value`}
-                className="underline underline-offset-2 transition-colors duration-150 hover:text-ink"
-              >
-                {lastName(standout.name)}'s page →
-              </Link>
+          <div className="mt-6 grid items-center gap-x-8 gap-y-4 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
+            <ExpectedVsActual rows={svPool} league={league} season={season} height={460} />
+            <p className="max-w-prose text-xs leading-relaxed text-ink-faint lg:self-end lg:pb-14">
+            The cloud rides the diagonal: across{" "}
+            <span className="font-mono tnum">{int(svPool.length)}</span> players
+            the two axes correlate{" "}
+            <span className="font-mono tnum">{moves.rho.toFixed(2)}</span>, so
+            most of where a player sits on the shooting-percentage ladder is
+            decided by the shots he takes. The part that is the player is the
+            vertical distance from the line, and it is what this site measures.{" "}
+            <Link
+              to={`/leaderboard?lens=making&season=${encodeURIComponent(season)}`}
+              className="underline underline-offset-2 transition-colors duration-150 hover:text-ink"
+            >
+              Every player on this lens →
+            </Link>
             </p>
           </div>
         </section>

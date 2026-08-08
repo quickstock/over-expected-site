@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import Nav from "./components/Nav";
@@ -9,8 +9,6 @@ import Landing from "./views/Landing";
 import Leaderboard from "./views/Leaderboard";
 import LineupsBoard from "./views/boards/LineupsBoard";
 import ValueBoard from "./views/boards/ValueBoard";
-import CoachingBoard from "./views/boards/CoachingBoard";
-import DefenseBoard from "./views/boards/DefenseBoard";
 import Calibration from "./views/Calibration";
 import Player from "./views/Player";
 import Methodology from "./views/Methodology";
@@ -27,7 +25,7 @@ import Referee from "./views/Referee";
 import Feedback from "./views/Feedback";
 import Story from "./views/Story";
 import { useLeague } from "./data";
-import { LEAGUE_DEFS, oklchCss } from "./leagues";
+import { ACTIVE_LEAGUES, LEAGUE_DEFS, oklchCss, type League as LeagueCode } from "./leagues";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -49,16 +47,17 @@ function CalibrationIndex() {
   return <Navigate to={`/calibration/${league}`} replace />;
 }
 
-/** /coaching (no league) -> the active league's board. */
-function CoachingIndex() {
-  const { league } = useLeague();
-  return <Navigate to={`/coaching/${league}`} replace />;
-}
-
-/** /defense (no league) -> the active league's board. */
-function DefenseIndex() {
-  const { league } = useLeague();
-  return <Navigate to={`/defense/${league}`} replace />;
+/** The decision-EV and team-defence boards migrated into /league; old URLs
+    stay alive by landing there, switching the active league on the way. */
+function LeagueRedirect({ lens }: { lens?: string }) {
+  const { lg } = useParams();
+  const { league, setLeague } = useLeague();
+  useEffect(() => {
+    if (lg && lg !== league && ACTIVE_LEAGUES.includes(lg as LeagueCode)) {
+      setLeague(lg as LeagueCode);
+    }
+  }, [lg, league, setLeague]);
+  return <Navigate to={lens ? `/league?lens=${lens}` : "/league"} replace />;
 }
 
 /** /value (no league) -> the active league's board. */
@@ -111,10 +110,10 @@ export default function App() {
           <Route path="/lineups/:lg/:lineupId" element={<LineupDetail />} />
           <Route path="/value" element={<ValueIndex />} />
           <Route path="/value/:lg" element={<ValueBoard />} />
-          <Route path="/coaching" element={<CoachingIndex />} />
-          <Route path="/coaching/:lg" element={<CoachingBoard />} />
-          <Route path="/defense" element={<DefenseIndex />} />
-          <Route path="/defense/:lg" element={<DefenseBoard />} />
+          <Route path="/coaching" element={<LeagueRedirect />} />
+          <Route path="/coaching/:lg" element={<LeagueRedirect />} />
+          <Route path="/defense" element={<LeagueRedirect lens="qualityForced" />} />
+          <Route path="/defense/:lg" element={<LeagueRedirect lens="qualityForced" />} />
           <Route path="/calibration" element={<CalibrationIndex />} />
           <Route path="/calibration/:lg" element={<Calibration />} />
           <Route path="/methodology" element={<Methodology />} />

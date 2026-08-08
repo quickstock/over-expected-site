@@ -33,7 +33,9 @@ export interface LeagueDef {
   inLabel: string;
   /** Toggle chip / compact contexts. */
   short: string;
-  /** Diverging encoding poles. Warm = above league rate, cool = below. */
+  /** Diverging encoding poles. Warm = above league rate, cool = below.
+      Warm is always the warmer hue of the pair: positive reads red-family,
+      negative blue-family, in every league. */
   warm: Oklch;
   cool: Oklch;
   /** FTAOE per-100 at which the color scale saturates. */
@@ -95,8 +97,8 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     label: "NBA",
     inLabel: "the NBA",
     short: "NBA",
-    warm: { l: 0.5, c: 0.18, h: 256 },
-    cool: { l: 0.58, c: 0.185, h: 38 },
+    warm: { l: 0.58, c: 0.185, h: 38 },
+    cool: { l: 0.5, c: 0.18, h: 256 },
     scaleMax: 12,
     court: "nba",
     sftaOnly: true,
@@ -156,8 +158,8 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     label: "Lega Basket Serie A",
     inLabel: "the Italian LBA",
     short: "LBA",
-    warm: { l: 0.55, c: 0.16, h: 150 },
-    cool: { l: 0.5, c: 0.15, h: 310 },
+    warm: { l: 0.5, c: 0.15, h: 310 },
+    cool: { l: 0.55, c: 0.16, h: 150 },
     ...EURO_DEFAULTS,
     sourceCredit:
       "Underlying play-by-play is Lega Basket Serie A public data.",
@@ -177,8 +179,8 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     label: "Greek Basket League",
     inLabel: "the Greek Basket League",
     short: "GBL",
-    warm: { l: 0.58, c: 0.13, h: 210 },
-    cool: { l: 0.5, c: 0.16, h: 340 },
+    warm: { l: 0.5, c: 0.16, h: 340 },
+    cool: { l: 0.58, c: 0.13, h: 210 },
     ...EURO_DEFAULTS,
     sourceCredit:
       "Underlying play-by-play is Greek Basket League public data.",
@@ -199,8 +201,8 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     label: "ABA Liga",
     inLabel: "the ABA Liga",
     short: "ABA",
-    warm: { l: 0.53, c: 0.11, h: 180 },
-    cool: { l: 0.5, c: 0.16, h: 330 },
+    warm: { l: 0.5, c: 0.16, h: 330 },
+    cool: { l: 0.53, c: 0.11, h: 180 },
     ...EURO_DEFAULTS,
     sourceCredit: "Underlying play-by-play is ABA Liga public data.",
   },

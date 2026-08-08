@@ -217,8 +217,16 @@ export default function MethodologyNBA() {
           foul rate. The opponent and crew rates are season-specific and
           leave-one-game-out, so a game's own outcomes never enter its own
           features. Validation is season cross-fitting (train on five
-          seasons, predict the held-out sixth), so every prediction is
-          out-of-fold. Earlier versions included shot location and
+          seasons, predict the held-out sixth). One correction to an earlier
+          version of this page, which said every prediction was out-of-fold:
+          the <em>coefficients</em> are, but the opponent and crew rates are
+          built within each season including the held-out one, so those two
+          features are not. Rebuilt from the training seasons only they add
+          nothing at all, and the deviance reduction falls from{" "}
+          <span className="font-mono tnum">0.20%</span> to{" "}
+          <span className="font-mono tnum">0.15%</span>, which is the same
+          conclusion, arrived at honestly. Earlier versions included shot
+          location and
           play-resolution features and looked far stronger; that strength was
           leakage (the features encoded how the possession ended), and they
           were removed.
@@ -226,11 +234,25 @@ export default function MethodologyNBA() {
         <p>
           Expected is then anchored to each season's own league rate: the
           held-out season's predictions are scaled so their mean equals that
-          season's actual rate. Without this, rule changes move everyone's
-          number: when the 2021-22 enforcement change on non-basketball moves
-          cut league foul rates, a model trained on other seasons would
-          over-expect free throws for every 2021-22 player. Anchoring keeps
-          FTAOE a within-season comparison, which is what it claims to be.
+          season's actual rate. Anchoring keeps FTAOE a within-season
+          comparison, which is what it claims to be.
+        </p>
+        <p>
+          This page used to explain the scaling factors as a correction for
+          rule changes, citing the 2021-22 enforcement change on
+          non-basketball moves. That explanation was wrong. The factors are
+          almost exactly{" "}
+          <span className="font-mono tnum">1.021</span> in every season, which
+          is the ratio between all possessions and the ones with an
+          attributable finisher: the model is fitted on possessions that
+          include roughly 28,600 with no finisher, which carry zero
+          shooting-foul free throws by construction and drag the fitted mean
+          down. Refitting on the attributable possessions alone moves the
+          factors to about{" "}
+          <span className="font-mono tnum">0.999</span>, and the 2021-22
+          crackdown leaves no signature in either version. The scaling was
+          fixing our own fitting universe, not the league's. That refit is
+          pending here.
         </p>
         <p className="border-l-2 border-line pl-4 text-ink">
           The honest punchline: out-of-fold, the full context model (game
@@ -262,6 +284,78 @@ export default function MethodologyNBA() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <H2>What FTAOE does not adjust for</H2>
+      <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
+        <p>
+          The section above says the context model barely moves the number.
+          Here is how little, and what stays in as a result. These figures
+          come from the same artifacts the rest of this page reads, not from
+          a description of them.
+        </p>
+        {meta.confounds && (
+          <>
+            <p>
+              <strong className="font-medium">
+                It is largely a body-type measure.
+              </strong>{" "}
+              FTAOE per 100 correlates{" "}
+              <span className="font-mono tnum">
+                {meta.confounds.heightCorr.toFixed(3)}
+              </span>{" "}
+              with the finisher's height, so about{" "}
+              <span className="font-mono tnum">
+                {Math.round(meta.confounds.heightR2 * 100)}%
+              </span>{" "}
+              of its variance is height rather than anything a player does.
+              Bigs sit near the top of this board partly because they are
+              big. That is not a flaw in the fit; it is what the statistic
+              measures, and the board now says so.
+            </p>
+            <p>
+              <strong className="font-medium">
+                It is close to the unadjusted rate.
+              </strong>{" "}
+              FTAOE correlates{" "}
+              <span className="font-mono tnum">
+                {meta.confounds.rawRateCorr.toFixed(4)}
+              </span>{" "}
+              with plain shooting-foul free throws per 100 possessions. The
+              two are also equally reliable across a season (
+              <span className="font-mono tnum">
+                {meta.confounds.rawRateFullSeasonR.toFixed(3)}
+              </span>{" "}
+              for the raw rate,{" "}
+              <span className="font-mono tnum">
+                {meta.confounds.ftaoeFullSeasonR.toFixed(3)}
+              </span>{" "}
+              for FTAOE), which means the stability quoted above belongs to
+              the underlying rate and not to the model on top of it.
+            </p>
+            <p>
+              <strong className="font-medium">
+                Adjusting for size does not rescue it.
+              </strong>{" "}
+              Refitting with height and position included does remove the
+              gradient, but the result reproduces an ordinary regression of
+              the raw rate on height and position at{" "}
+              <span className="font-mono tnum">
+                {meta.confounds.archetypeVsLinearCorr.toFixed(3)}
+              </span>
+              . Anyone wanting foul-drawing net of body type can run that
+              two-variable regression and get the same answer, so we do not
+              ship a version claiming to be more than that.
+            </p>
+          </>
+        )}
+        <p className="border-l-2 border-line pl-4 text-ink">
+          Read the board as a reliable measure of how often a player draws
+          shooting fouls, adjusted to the league rate of his own season. Do
+          not read it as foul-drawing skill net of size, role or shot
+          selection. It has never measured that, and this page previously
+          left the size part unsaid.
+        </p>
       </div>
 
       <H2>Calibration</H2>

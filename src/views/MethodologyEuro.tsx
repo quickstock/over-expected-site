@@ -168,8 +168,8 @@ export default function MethodologyEuro() {
         player draws per 100 possessions, compared with the league-average
         rate. FTAOE = actual FTA − expected FTA; the per-100 version divides
         by the possessions a player finished. Everything on this page is
-        computed separately for EuroLeague and Liga ACB — models are never
-        pooled across leagues. You are reading the{" "}
+        computed separately for each league; models are never pooled across
+        them. You are reading the{" "}
         {LEAGUE_LABEL[league]} numbers.
       </p>
 
@@ -180,7 +180,7 @@ export default function MethodologyEuro() {
           or three attempts), and bonus free throws once the defense is over
           the team-foul limit. Technical, unsportsmanlike, and bench fouls
           are excluded. Attempts are attributed to the player who finished
-          the possession — the one who went to the line.
+          the possession, meaning the one who went to the line.
         </p>
         <p>
           This is one deliberate difference from the NBA version of this
@@ -190,8 +190,8 @@ export default function MethodologyEuro() {
           genuinely ambiguous between the two. Rather than guess, the stat
           here is the cleaner-defined one: free throws drawn from regular
           play. The FIBA bonus itself is handled on the other side of the
-          ledger — it is a feature of the expectation model, so a player is
-          not credited merely for playing minutes deep in penalty situations.
+          ledger, as a feature of the expectation model, so a player is not
+          credited merely for playing minutes deep in penalty situations.
         </p>
         <p>
           The data is possession-level play-by-play:{" "}
@@ -236,7 +236,7 @@ export default function MethodologyEuro() {
           link, no interactions) on seven features that are all external to
           the player. Four describe game state (period, seconds remaining in
           the period, score margin at the start of the possession, and the
-          real FIBA team-foul bonus — derived from the foul stream, not a
+          real FIBA team-foul bonus, derived from the foul stream rather than a
           late-game proxy) and three describe the situation: whether the
           offense is at home, the opponent's drawn-FT rate, and the assigned
           officiating crew's rate. The opponent and crew rates are
@@ -257,8 +257,8 @@ export default function MethodologyEuro() {
           <span className="font-mono tnum">
             {meta.modelLiftPct.toFixed(2)}%
           </span>{" "}
-          against each season's own league-average rate — most of it from
-          the bonus state, which mechanically produces free throws. Context
+          against each season's own league-average rate, most of it from the
+          bonus state, which mechanically produces free throws. Context
           matters more here than in the NBA (where the same model bought
           0.2%), but the expectation is still, in practice, mostly "versus
           league average", and the site presents it that way.
@@ -297,9 +297,9 @@ export default function MethodologyEuro() {
         <p>
           Each dot is roughly{" "}
           <span className="font-mono tnum">{int(calibration[0].n)}</span>{" "}
-          possessions. The bins sit near the diagonal — the model isn't
-          systematically over- or under-calling fouls — and from the lowest
-          to the highest decile it separates possessions by about{" "}
+          possessions. The bins sit near the diagonal, so the model isn't
+          systematically over- or under-calling fouls, and from the lowest to
+          the highest decile it separates possessions by about{" "}
           <span className="font-mono tnum">{spreadPer100}</span> free throws
           per 100, most of that the bonus state doing its work.
         </p>

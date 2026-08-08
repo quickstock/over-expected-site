@@ -61,16 +61,16 @@ const LEAGUE_LABEL = {
 // above the league rate, cool = below. Kept in step with the oklch tokens
 // in src/leagues.ts.
 const THEME = {
-  NBA: { warm: "#005fc6", cool: "#d0440b" },
+  NBA: { warm: "#d0440b", cool: "#005fc6" },
   EL: { warm: "#df5200", cool: "#2f5e9e" },
   EUC: { warm: "#a8a300", cool: "#3d4fa0" },
   ACB: { warm: "#bd1f44", cool: "#2f5e9e" },
   BSL: { warm: "#e43322", cool: "#2f5e9e" },
-  LBA: { warm: "#008a39", cool: "#7d45a2" },
+  LBA: { warm: "#7d45a2", cool: "#008a39" },
   PROA: { warm: "#6f41c1", cool: "#007e46" },
-  GBL: { warm: "#008da4", cool: "#9b357f" },
+  GBL: { warm: "#9b357f", cool: "#008da4" },
   BBL: { warm: "#b58600", cool: "#2f5e9e" },
-  ABA: { warm: "#00806e", cool: "#93398e" },
+  ABA: { warm: "#93398e", cool: "#00806e" },
   WNBA: { warm: "#d5461c", cool: "#3d5ea3" },
 };
 // Whether the league counts shooting-foul FTs only (NBA) or all drawn FTs.
@@ -277,10 +277,11 @@ function genericCard() {
     "lineups & RAPM" on the decision-EV page misdescribes it to anyone who
     shares the link — four layers means four kickers, not one reused. */
 function layerCard({ leagues, kicker, headline, scale }) {
-  // Poles follow which END IS GOOD, not which is numerically larger:
-  // decision EV is better at zero, so its low value takes the warm pole.
-  const loPole = scale.lowerIsBetter ? THEME.NBA.warm : THEME.NBA.cool;
-  const hiPole = scale.lowerIsBetter ? THEME.NBA.cool : THEME.NBA.warm;
+  // Poles follow the site rule: the high end of any scale is warm (red
+  // family), the low end cool, regardless of which end is good — matching
+  // the diverging encoding everywhere else on the site.
+  const loPole = THEME.NBA.cool;
+  const hiPole = THEME.NBA.warm;
   return {
     type: "div",
     props: {
@@ -505,18 +506,12 @@ if (COACHING_LEAGUES.length) {
       unit: "points of win probability given up",
     },
   }), join(DIST, "og", "coaching.png"));
-  for (const lg of COACHING_LEAGUES) {
-    shell({
-      title: `Decision EV · ${LEAGUE_LABEL[lg]} · Over Expected`,
-      description: `The end-game two-versus-three decision in ${LEAGUE_LABEL[lg]}, scored on expected win probability at the moment of the choice rather than on whether the shot went in.`,
-      path: `/coaching/${lg}`,
-      image: "coaching.png",
-    });
-  }
+  // The board itself migrated into /league (Clutch Decision-making), so the
+  // only route left to shell is the methodology page; /coaching/* redirects.
   shell({
-    title: "Decision EV methodology · Over Expected",
+    title: "Clutch Decision-making methodology · Over Expected",
     description:
-      "How the end-game shot-selection decision is valued, why the outcome is never an input, and why teams are grouped into overlap tiers rather than ranked one to thirty.",
+      "How the end-game shot-selection decision is valued, why the outcome is never an input, and why neighbouring ranks are statistical ties.",
     path: "/methodology/coaching",
     image: "coaching.png",
   });
@@ -534,14 +529,8 @@ if (DEFENSE_LEAGUES.length) {
                unit: "expected points per shot vs league" };
     })(),
   }), join(DIST, "og", "defense.png"));
-  for (const lg of DEFENSE_LEAGUES) {
-    shell({
-      title: `Team defence · ${LEAGUE_LABEL[lg]} · Over Expected`,
-      description: `${LEAGUE_LABEL[lg]} team defence split into the shot quality a defence forces and whether opponents then converted below expectation, with the measured reliability of each.`,
-      path: `/defense/${lg}`,
-      image: "defense.png",
-    });
-  }
+  // The board itself migrated into /league (the three defence lenses), so
+  // the only route left to shell is the methodology page; /defense/* redirects.
   shell({
     title: "Team defence methodology · Over Expected",
     description:
@@ -560,9 +549,7 @@ const urls = [
   ...(LINEUP_LEAGUES.length ? [`${BASE}/methodology/lineups`] : []),
   ...VALUE_LEAGUES.map((lg) => `${BASE}/value/${lg}`),
   ...(VALUE_LEAGUES.length ? [`${BASE}/methodology/value`] : []),
-  ...COACHING_LEAGUES.map((lg) => `${BASE}/coaching/${lg}`),
   ...(COACHING_LEAGUES.length ? [`${BASE}/methodology/coaching`] : []),
-  ...DEFENSE_LEAGUES.map((lg) => `${BASE}/defense/${lg}`),
   ...(DEFENSE_LEAGUES.length ? [`${BASE}/methodology/defense`] : []),
   ...(existsSync(join(ROOT, "public", "calibration-NBA.json"))
     ? LEAGUES.map((lg) => `${BASE}/calibration/${lg}`) : []),

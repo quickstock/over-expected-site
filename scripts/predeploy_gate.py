@@ -134,6 +134,12 @@ def check_registry_layer_files():
 # `r.teams.join(...)` threw and blanked the whole /lineups route while every HTTP
 # check still returned 200. Types describe JSON they never validate; this does.
 REQUIRED_ROW_FIELDS = {
+    # Base export: the League page's team tables dereference the shot-value
+    # columns (sv100/make100 may be null, but the keys must exist) alongside
+    # the FT pair.
+    "data-*.json": (["teams", "*", "*"],
+                    ["team", "poss", "drawn", "conceded",
+                     "sv100", "make100"]),
     "rapm-*.json": (["players", "*", "*"],
                     ["id", "name", "teams", "possOff", "possDef",
                      "oP", "dP", "netP", "seO", "seD", "netCi", "tier"]),

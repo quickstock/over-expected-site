@@ -79,7 +79,7 @@ export default function ReliabilityContext({
       ? "Both numbers are on solid ground at this sample size."
       : mak.value >= 0.5
         ? "Selection is solid here. Shot-making is suggestive but not yet reliable."
-        : "Selection is solid here. Shot-making is mostly noise at this sample size — read it as a hint, not a measurement.";
+        : "Selection is solid here. Shot-making is mostly noise at this sample size, so read it as a hint rather than a measurement.";
 
   return (
     <section className="mt-14">
@@ -121,7 +121,7 @@ export default function ReliabilityContext({
       </div>
 
       <p className="mt-4 max-w-2xl text-xs leading-relaxed text-ink-faint">
-        Interpolated from {league}'s own measured reliability curve — thresholds are a
+        Interpolated from {league}'s own measured reliability curve. Thresholds are a
         property of each league's talent dispersion, not universal constants. The tick
         marks 0.70, the conventional line for a usable measurement.
         {(sel.extrapolated || mak.extrapolated) &&

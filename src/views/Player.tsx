@@ -570,34 +570,31 @@ export default function Player() {
         </section>
       )}
 
-      {/* style-adjusted: a secondary read, kept below the headline number */}
+      {/* Style-adjusted used to be its own section: a heading, an explainer and
+          a percentile slider, all for one secondary number. It reads better as
+          one line under the ledger than as a fifth stop on the page. */}
       {row.sper100 !== null && row.spct !== null && (
-        <section className="mt-14">
-          <h2 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
-            Style-adjusted
-          </h2>
-          <p className="mt-1.5 max-w-prose text-sm text-ink-soft">
-            A different question than the headline: how much he draws above what
-            his attack profile (drives, paint and post touches) predicts.{" "}
-            <Link
-              to="/methodology"
-              className="underline underline-offset-2 transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-            >
-              How it differs
-            </Link>
-            .
-          </p>
-          <PercentileSliders
-            className="mt-3 max-w-2xl"
-            rows={[
-              {
-                label: `Style-adjusted/100, ${season}`,
-                per100: row.sper100,
-                pct: row.spct,
-              },
-            ]}
-          />
-        </section>
+        <p className="mt-10 max-w-2xl text-sm leading-relaxed text-ink-soft">
+          <span className="font-display font-semibold text-ink">
+            Style-adjusted:
+          </span>{" "}
+          <span
+            className="font-mono tnum"
+            style={{ color: divergingText(row.sper100) }}
+          >
+            {signed(row.sper100, 1)}
+          </span>{" "}
+          per 100 ({ordinal(Math.round(row.spct))} percentile), against
+          what his attack profile of drives, paint and post touches predicts
+          rather than against the league.{" "}
+          <Link
+            to="/methodology"
+            className="underline underline-offset-2 transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          >
+            How it differs
+          </Link>
+          .
+        </p>
       )}
 
       {/* career */}

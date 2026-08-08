@@ -22,7 +22,7 @@ export default function MethodologyValue() {
       </h1>
       <p className="mt-4 text-base leading-relaxed text-ink-soft sm:text-lg">
         Production first, price second. How many wins above a replacement-level
-        player did someone contribute, and — where salaries are public — was the
+        player did someone contribute, and where salaries are public, was the
         contract worth it?
       </p>
 
@@ -60,9 +60,9 @@ export default function MethodologyValue() {
           instead, for a reason worth stating plainly: BPM is a box-score{" "}
           <em>estimate</em> of a player's per-100 net impact, while RAPM measures
           that same quantity directly from who was on the floor. Substituting a
-          regression for an estimate of the same target is an upgrade, not a
-          compromise — and both live on the same per-100 scale, centred so the
-          league sits at zero, so the replacement level transfers unchanged.
+          regression for an estimate of the same target is an upgrade. Both live
+          on the same per-100 scale, centred so the league sits at zero, so
+          replacement level transfers over unchanged.
         </p>
         <p>
           The second reason is smaller but real: BPM would have to be scraped
@@ -76,25 +76,25 @@ export default function MethodologyValue() {
       <div className={BODY}>
         <p>
           Surplus is what a player produced minus what he was paid. Cost per win
-          comes from the players who have a salary in a given season — their
-          combined pay divided by their combined wins over replacement — and each
-          player's dollar value is his wins at that rate. Surplus is value minus
-          salary.
+          comes from the players who have a salary in a given season: their
+          combined pay divided by their combined wins over replacement. Each
+          player's dollar value is his wins at that rate, and surplus is that
+          value minus his salary.
         </p>
         <p>
           All of that needs a per-player salary for every player, and this build
-          does not have one. NBA salaries are genuinely public — Spotrac and
-          Basketball-Reference both publish them — so this is not a claim that
-          the data does not exist. What failed was <em>automated</em> collection:
+          does not have one. NBA salaries are genuinely public; Spotrac and
+          Basketball-Reference both publish them, so this is not a claim that the
+          data does not exist. What failed was <em>automated</em> collection.
           Spotrac serves an "update your browser" block to scripted clients, and
-          working around a deliberate access control is not something this
-          project will do. A licensed feed or a manual export would supply the
-          same figures perfectly well.
+          working around a deliberate access control is not something this project
+          will do. A licensed feed or a manual export would supply the same
+          figures perfectly well.
         </p>
         <p>
           So when no salary file is present the export ships production only and
-          every dollar field is null — never zero, never estimated — and the
-          board says so.{" "}
+          every dollar field is null, never zero and never estimated. The board
+          says so.{" "}
           {meta && !meta.anySalary ? (
             <strong className="text-ink">
               No season currently has salary data, so no surplus is shown
@@ -116,10 +116,10 @@ export default function MethodologyValue() {
       <div className={BODY}>
         <p>
           Cost per win is a league-average exchange rate, not a team's real
-          budget constraint. It ignores the cap's structure entirely — max-salary
+          budget constraint. It ignores the cap's structure entirely: max-salary
           rules, rookie scale, exceptions, dead money and luxury-tax rates all
-          mean a dollar is not equally spendable for every team. A "surplus"
-          figure is therefore a comparison, not a verdict on a front office.
+          mean a dollar is not equally spendable for every team. A surplus figure
+          is a comparison, not a verdict on a front office.
         </p>
         <p>
           Wins over replacement inherits every limitation of the impact metric

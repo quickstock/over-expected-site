@@ -137,7 +137,7 @@ export default function LineupDetail() {
         <span className="font-medium text-ink">Synergy</span> is what this five does
         beyond the sum of its members' individual RAPM ({signed(row.net100, 1)} actual
         vs {signed(row.exp100, 1)} expected). <span className="font-medium text-ink">Shot-quality
-        synergy</span> is whether they generate better looks together than apart —
+        synergy</span> is whether they generate better looks together than apart:
         positive means the lineup's average expected points per shot beats its
         members' individual averages. Single-lineup samples are noisy and don't
         persist out of sample; read this as description.{" "}

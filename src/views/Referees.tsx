@@ -6,6 +6,7 @@ import { leagueDef } from "../leagues";
 import { int, signed } from "../lib/format";
 import { useTitle } from "../lib/useTitle";
 import SegmentedControl from "../components/SegmentedControl";
+import SortHeader, { cycleSort } from "../components/SortHeader";
 
 type SortKey = "diff" | "games" | "per100";
 
@@ -37,37 +38,6 @@ function RefBar({ diff, className = "w-24" }: { diff: number; className?: string
   );
 }
 
-function SortHeader({
-  k,
-  sort,
-  dir,
-  onSort,
-  className = "",
-}: {
-  k: SortKey;
-  sort: SortKey;
-  dir: "asc" | "desc";
-  onSort: (k: SortKey) => void;
-  className?: string;
-}) {
-  const active = sort === k;
-  return (
-    <button
-      type="button"
-      onClick={() => onSort(k)}
-      aria-pressed={active}
-      className={`font-display text-[11px] font-medium uppercase tracking-wider transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
-        active ? "text-ink" : "text-ink-faint hover:text-ink-soft"
-      } ${className}`}
-    >
-      {SORT_LABEL[k]}
-      <span className="ml-1 inline-block w-2 font-mono">
-        {active ? (dir === "desc" ? "↓" : "↑") : ""}
-      </span>
-    </button>
-  );
-}
-
 export default function Referees() {
   const data = useData();
   const { league } = useLeague();
@@ -79,9 +49,12 @@ export default function Referees() {
   const season = seasons.includes(params.get("season") ?? "")
     ? (params.get("season") as string)
     : data.meta.defaultSeason;
-  const sort = (["diff", "games", "per100"].includes(params.get("sort") ?? "")
-    ? params.get("sort")
-    : "diff") as SortKey;
+  // Explicit sort = the user clicked a column; null = the page's own order
+  // (diff desc), which renders with no direction indicator.
+  const explicit = ["diff", "games", "per100"].includes(params.get("sort") ?? "")
+    ? (params.get("sort") as SortKey)
+    : null;
+  const sort = explicit ?? "diff";
   const dir = params.get("dir") === "asc" ? "asc" : "desc";
 
   const update = (patch: Record<string, string>) => {
@@ -89,12 +62,18 @@ export default function Referees() {
     for (const [k, v] of Object.entries(patch)) next.set(k, v);
     setParams(next, { replace: false });
   };
-  const onSort = (k: SortKey) =>
-    update(
-      k === sort
-        ? { dir: dir === "desc" ? "asc" : "desc" }
-        : { sort: k, dir: "desc" },
-    );
+  const onSort = (k: SortKey) => {
+    const next = cycleSort(k, explicit, dir);
+    const p = new URLSearchParams(params);
+    if (next) {
+      p.set("sort", next.sort);
+      p.set("dir", next.dir);
+    } else {
+      p.delete("sort");
+      p.delete("dir");
+    }
+    setParams(p, { replace: false });
+  };
 
   const lg = data.meta.leagueRateBySeason[season];
   const rows = useMemo(() => {
@@ -126,7 +105,7 @@ export default function Referees() {
         {/* mobile sort */}
         <div className="mx-auto flex max-w-4xl items-center gap-4 px-5 pb-3 sm:hidden">
           {(["diff", "games", "per100"] as SortKey[]).map((k) => (
-            <SortHeader key={k} k={k} sort={sort} dir={dir} onSort={onSort} />
+            <SortHeader key={k} k={k} label={SORT_LABEL[k]} sort={explicit} dir={dir} onSort={onSort} />
           ))}
         </div>
       </div>
@@ -149,11 +128,11 @@ export default function Referees() {
           <span className="font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
             Official
           </span>
-          <SortHeader k="games" sort={sort} dir={dir} onSort={onSort} className="text-right" />
+          <SortHeader k="games" label={SORT_LABEL.games} sort={explicit} dir={dir} onSort={onSort} className="text-right" />
           <span className="text-right font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
             vs league rate
           </span>
-          <SortHeader k="diff" sort={sort} dir={dir} onSort={onSort} className="text-right" />
+          <SortHeader k="diff" label={SORT_LABEL.diff} sort={explicit} dir={dir} onSort={onSort} className="text-right" />
         </div>
 
         {rows.length === 0 ? (

@@ -84,7 +84,7 @@ export default function RapmPanel({
 
       {poss < floor ? (
         <p className="mt-6 rounded border border-line-soft bg-wash px-4 py-8 text-center text-sm leading-relaxed text-ink-faint">
-          {int(poss)} possessions on the floor — below the {int(floor)} this
+          {int(poss)} possessions on the floor, below the {int(floor)} this
           layer requires. A lineup model needs far more than a shot-value one
           does: with a sample this thin the estimate is set by the box-score
           prior rather than by what happened, so it is not shown.
@@ -110,7 +110,7 @@ export default function RapmPanel({
 
           <p className="mt-4 text-xs leading-relaxed text-ink-faint">
             The ± figures are approximate standard errors. Where they are large
-            relative to the estimate, the number is a weak signal — RAPM
+            relative to the estimate, the number is a weak signal. RAPM
             separates players only as far as the lineup data allows.
           </p>
         </>

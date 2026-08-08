@@ -22,10 +22,10 @@ export default function MethodologyLineups() {
         Lineups &amp; RAPM
       </h1>
       <p className="mt-4 text-base leading-relaxed text-ink-soft sm:text-lg">
-        How much does a player add per 100 possessions once you strip out who
-        he shares the floor with and who he plays against? That is regularized
-        adjusted plus-minus. Here is exactly how this build computes it, what
-        it can say, and what it cannot.
+        How much does a player add per 100 possessions once you strip out who he
+        shares the floor with and who he plays against? That is regularized
+        adjusted plus-minus. Here is how this build computes it, what it can say,
+        and what it cannot.
       </p>
 
       <h2 className={H2}>What it measures</h2>
@@ -46,9 +46,9 @@ export default function MethodologyLineups() {
           on the floor at the moment it starts. The NBA's authoritative
           on/off endpoint is rate-limited to the point of being unusable at
           scale, so the ten-man lineups are reconstructed from the
-          substitution events in the play-by-play itself — parsed with name
-          resolution that survives diacritics, generational suffixes,
-          mid-career renames, and same-surname teammates.
+          substitution events in the play-by-play itself, parsed with name
+          resolution that survives diacritics, generational suffixes, mid-career
+          renames, and same-surname teammates.
         </p>
         <p>
           Each possession is attributed to the five on the floor when it
@@ -73,8 +73,8 @@ export default function MethodologyLineups() {
         <p>
           One row per possession, one column per player's offense and per
           player's defense, plus an intercept and a home-offense term. Points
-          per 100 is regressed on that design with a ridge penalty — the
-          shrinkage that keeps a player who only ever shared the floor with one
+          per 100 is regressed on that design with a ridge penalty. That is the
+          shrinkage that stops a player who only ever shared the floor with one
           teammate from absorbing that teammate's value. The penalty strength λ
           is chosen by 10-fold cross-validation over held-out <em>games</em>,
           scoring each fold on how well summed possession predictions
@@ -119,8 +119,8 @@ export default function MethodologyLineups() {
         <p>
           The default display shrinks each player toward a prior built from his
           per-100 box score, rather than toward zero. The map from box stats to
-          RAPM is fit leave-one-season-out — the target season's prior comes
-          only from the other five seasons — so it never sees the season it
+          RAPM is fit leave-one-season-out, so the target season's prior comes
+          only from the other five seasons and never sees the season it
           informs. Box stats predict offense far better than defense
           {meta && (
             <> (out-of-sample R² around{" "}
@@ -138,10 +138,10 @@ export default function MethodologyLineups() {
           minutes played and team strength are more reliable than the
           alternatives, so we built one and compared the two on held-out
           game-margin error. Judged as a standalone predictor the
-          minutes-and-team prior is clearly better — it wins all six seasons, by
-          0.45 points of RMSE — even though it fits the training data far worse
-          (R² around 0.12 against 0.34), which is a plain case of the box-score
-          version over-fitting.
+          minutes-and-team prior is clearly better. It wins all six seasons by
+          0.45 points of RMSE, even though it fits the training data far worse
+          (R² around 0.12 against 0.34), which is the box-score version
+          over-fitting.
         </p>
         <p>
           But that is not how a prior is used here. Judged as the shrinkage
@@ -150,8 +150,8 @@ export default function MethodologyLineups() {
           ahead in five of six seasons. Once the ridge has real possessions to
           work with, the prior only governs the players too thin to measure, and
           the choice between two reasonable priors stops mattering. So the
-          box-score prior stays — kept because the evidence says the swap buys
-          nothing, not because it was there first.
+          box-score prior stays, kept because the evidence says the swap buys
+          nothing rather than because it was there first.
         </p>
       </div>
 
@@ -159,9 +159,9 @@ export default function MethodologyLineups() {
       <div className={BODY}>
         <p>
           The whiskers on the scatter are ±1 standard error from the ridge
-          sandwich — approximate, and wide for low-minute players, which is the
-          honest picture: a half-season of possessions cannot pin a player to a
-          tenth of a point. Two players who almost always play together are
+          sandwich. They are approximate, and wide for low-minute players, which
+          is the honest picture: a half-season of possessions cannot pin a player
+          to a tenth of a point. Two players who almost always play together are
           nearly impossible to separate; the regression splits them somewhat
           arbitrarily.{" "}
           {meta && meta.collinear.length > 0 ? (
@@ -182,8 +182,8 @@ export default function MethodologyLineups() {
       <div className={BODY}>
         <p>
           A five-man lineup's synergy is what it does beyond the sum of its
-          members' individual RAPM — actual net rating minus expected. The
-          novel piece is decomposing it with the site's shot-value model:{" "}
+          members' individual RAPM, so actual net rating minus expected. The new
+          piece is splitting that with the site's shot-value model:{" "}
           <strong>shot-quality synergy</strong> asks whether a lineup generates
           better looks together than its players do individually, using the
           same shooter-agnostic expected-points-per-shot that powers the shot
@@ -194,13 +194,13 @@ export default function MethodologyLineups() {
           {meta && meta.synergyOOS.r !== null ? (
             <>Split each season at its midpoint and first-half synergy
               correlates just r={meta.synergyOOS.r.toFixed(2)} (n={meta.synergyOOS.n})
-              with second-half overperformance — essentially zero.</>
+              with second-half overperformance, which is nothing.</>
           ) : (
             <>Too few lineups repeat across halves to measure persistence.</>
           )}{" "}
-          High in-sample synergy is mostly small-sample noise and unsustainable
-          shot-making, not a durable chemistry effect. It is a description of
-          what happened, not a forecast — and the board says so.
+          High in-sample synergy is mostly small-sample noise and shot-making
+          that was never going to hold. It describes what happened, and the board
+          says so.
         </p>
       </div>
 
@@ -209,9 +209,9 @@ export default function MethodologyLineups() {
         <p>
           RAPM is single-season noisy; even at this sample the error bars are
           real and the tail ranks shuffle year to year. There is no player
-          tracking here — no defender distance, no matchup data — so defensive
-          RAPM is an on/off inference, not a measurement of what a defender did
-          to a specific shot. The tracking-era gold standard for that is the
+          tracking here, no defender distance and no matchup data, so defensive
+          RAPM is an on/off inference rather than a measurement of what a
+          defender did to a specific shot. The tracking-era gold standard for that is the
           expected-possession-value work of Cervone and coauthors (2016), which
           this approximates from public data and does not replace.
         </p>
@@ -219,8 +219,8 @@ export default function MethodologyLineups() {
           Defensive <em>synergy</em> in particular is only half-built: the
           shot-quality split covers offense today and waits on the defensive
           layer to attribute opponent shot suppression to a lineup. Everything
-          here is descriptive — it blends skill, role, and teammate quality,
-          and does not claim to isolate any one of them.
+          here is descriptive: it blends skill, role, and teammate quality, and
+          does not claim to isolate any one of them.
         </p>
       </div>
 

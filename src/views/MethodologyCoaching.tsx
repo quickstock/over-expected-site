@@ -13,7 +13,7 @@ const BODY =
  * cannot drift from what the export actually did.
  */
 export default function MethodologyCoaching() {
-  useTitle("Decision EV methodology · Over Expected");
+  useTitle("Clutch Decision-making methodology · Over Expected");
   const state = useCoaching("NBA");
   const meta = state.status === "ready" ? state.data.meta : null;
   const margins = state.status === "ready" ? state.data.margins : [];
@@ -21,27 +21,27 @@ export default function MethodologyCoaching() {
   return (
     <article className="mx-auto max-w-2xl px-5 py-12 font-serif sm:px-8 sm:py-16">
       <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-5xl">
-        Decision expected-value
+        Clutch Decision-making
       </h1>
       <p className="mt-4 text-base leading-relaxed text-ink-soft sm:text-lg">
         One decision, scored honestly: down a possession late, do you shoot the
         three or the two? The answer depends on the margin and on your own
-        conversion rates — never on whether the shot dropped.
+        conversion rates. It never depends on whether the shot dropped.
       </p>
 
       <h2 className={H2}>What is measured</h2>
       <div className={BODY}>
         <p>
-          For every live end-game possession — trailing by{" "}
-          {meta ? meta.window.margins.join(", ") : "1–3"} inside{" "}
+          Take every live end-game possession, meaning trailing by{" "}
+          {meta ? meta.window.margins.join(", ") : "1 to 3"} inside{" "}
           <span className="font-mono tnum">
             {meta ? meta.window.maxSeconds : 35}
           </span>{" "}
-          seconds of the fourth quarter — both branches are valued with a
-          calibrated win-probability model: what happens to your win probability
-          if you take the three, and if you take the two. Each branch uses that
-          team's own conversion rate for that shot type, so a good three-point
-          team is not judged against a league-average one.
+          seconds of the fourth quarter. Both branches get valued with a
+          calibrated win-probability model: what your win probability becomes if
+          you take the three, and what it becomes if you take the two. Each
+          branch uses that team's own conversion rate for that shot type, so a
+          good three-point team is not judged against a league-average one.
         </p>
         <p className="font-mono text-sm text-ink">
           ETM = WP(better option) − WP(option chosen)
@@ -76,20 +76,18 @@ export default function MethodologyCoaching() {
           and asserts the answer is byte-identical.
         </p>
         <p>
-          A metric that rewards a coach for a shot that happened to drop is a
-          metric that rewards luck. Rating decisions on their expected value at
-          the moment they were made is the only version of this that means
-          anything.
+          A number that rewards a coach for a shot that happened to drop rewards
+          luck. Scoring the decision on what it was worth at the moment it was
+          made is the only version of this worth publishing.
         </p>
       </div>
 
       <h2 className={H2}>The finding</h2>
       <div className={BODY}>
         <p>
-          Whether the three is the right call swings enormously with the margin.
-          Trailing by one, a two wins the game outright, so the three is almost
-          never right. Trailing by three, only the three can tie. Behaviour does
-          not follow:
+          Whether the three is the right call swings hugely with the margin. Down
+          one, a two wins the game outright, so the three is almost never right.
+          Down three, only the three can tie. Behaviour does not follow:
         </p>
         {margins.length > 0 && (
           <div className="overflow-x-auto">
@@ -124,37 +122,39 @@ export default function MethodologyCoaching() {
           </div>
         )}
         <p>
-          That the optimality column moves from single digits to nearly 100%
-          while the choice column sits near 55% throughout is the result. It is
-          also the sanity check nothing was tuned for: if the model's notion of
-          optimality did <em>not</em> flip with the margin, it would be wrong.
+          The optimality column moves from single digits to nearly 100% while the
+          choice column sits near 55% the whole way. That is the finding, and it
+          doubles as the check nothing was tuned for: if the model's idea of the
+          right call did <em>not</em> flip with the margin, the model would be
+          wrong.
         </p>
       </div>
 
-      <h2 className={H2}>Why teams, why pooled, why tiers</h2>
+      <h2 className={H2}>Why teams, why pooled, and how to read the ranking</h2>
       <div className={BODY}>
         <p>
           {meta
             ? meta.whyNotTeamSeason
             : "about 8 decisions per team-season, so per-season intervals are useless; pooling gives ~45 per team"}
-          . Reporting a per-season figure anyway would look more precise and be
-          less true.
+          . A per-season figure would look more precise and be less true.
         </p>
         <p>
-          Even pooled, ~45 decisions per team gives intervals wide enough that a
-          1-to-30 ranking would assert precision the data lacks. So teams are
-          grouped into overlap tiers:{" "}
+          Even pooled, about 45 decisions per team leaves intervals wide enough
+          that neighbouring places in the 1-to-30 ranking are statistical ties,
+          which is why the league page draws one team's 95% interval to the
+          same scale as the whole spread right above the list. Grouped by
+          interval overlap (
           {meta ? meta.tiering.rule : "a team joins the current tier while its interval overlaps the tier opener's"}
-          . The league resolves into just{" "}
+          ), the league resolves into just{" "}
           <span className="font-mono tnum">
             {meta ? meta.spread.tiers : 2}
           </span>{" "}
-          {meta && meta.spread.tiers === 1 ? "tier" : "tiers"}, which is itself
-          the honest summary: teams are much more alike here than a ranked list
-          would suggest.
+          distinguishable {meta && meta.spread.tiers === 1 ? "band" : "bands"}:
+          teams are far more alike here than a ranked list suggests, so read
+          the ranking as an ordering, not a set of verdicts.
         </p>
         <p>
-          One statistic on the board needs its own warning.{" "}
+          One statistic needs its own warning.{" "}
           {meta
             ? meta.distinguishableFromOptimal.note
             : "ETM cannot go below zero, so every team's interval excludes zero by construction."}
@@ -190,10 +190,10 @@ export default function MethodologyCoaching() {
 
       <p className="mt-14 border-t border-line pt-6">
         <Link
-          to="/coaching/NBA"
+          to="/league"
           className="font-display text-sm font-medium text-ink underline underline-offset-4"
         >
-          See the decision board →
+          See Clutch Decision-making on the League page →
         </Link>
       </p>
     </article>

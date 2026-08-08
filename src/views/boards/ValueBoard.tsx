@@ -48,13 +48,12 @@ function WarBar({ v, max }: { v: number; max: number }) {
 function Unavailable({ label }: { label: string }) {
   return (
     <div className="mx-auto max-w-xl px-5 py-28 text-center sm:px-8">
-      <p className="font-display text-2xl font-semibold text-ink">
+      <h1 className="font-display text-2xl font-semibold text-ink">
         Value isn't built for {label} yet.
-      </p>
+      </h1>
       <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-        This layer prices production against pay. It needs the lineup model
-        underneath it, which runs for the NBA today, and per-player salaries,
-        which only the NBA publishes at all.
+        This layer needs the lineup model underneath it, which runs for the NBA
+        today, and per-player salaries, which only the NBA publishes at all.
       </p>
       <Link
         to="/leaderboard"
@@ -186,15 +185,17 @@ export default function ValueBoard() {
       <div className="mx-auto max-w-5xl px-5 pt-8 sm:px-8 sm:pt-12">
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Value</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
-          What a player produced, on the replacement-level scale the public
-          metrics use:{" "}
-          <span className="font-mono tnum">
-            (impact − {data!.meta.replacementPer100.toFixed(1)})
-          </span>{" "}
-          × share of his team's possessions × season length, then ×{" "}
-          <span className="font-mono tnum">{data!.meta.winsPerVorp}</span> for wins
-          over replacement. The impact term is this site's own adjusted
-          plus-minus rather than a box-score estimate of it.
+          Impact turned into wins, on the same replacement-level scale the public
+          metrics use: how far a player sits above a replacement-level player,
+          times how much of his team's floor time he took, times the season.
+        </p>
+        <p className="mt-2.5 max-w-2xl font-mono text-xs leading-relaxed text-ink-soft">
+          (impact − {data!.meta.replacementPer100.toFixed(1)}) × possession share
+          × season length × {data!.meta.winsPerVorp} = wins over replacement
+        </p>
+        <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-ink-soft">
+          The impact term is this site's own adjusted plus-minus instead of a
+          box-score estimate of it.
         </p>
 
         {!hasSalary && (
@@ -202,11 +203,11 @@ export default function ValueBoard() {
             <strong className="font-display font-semibold text-ink">
               Surplus is not shown for {season}.
             </strong>{" "}
-            Contract surplus needs a per-player salary for every player, and this
-            project has no free, licensed source for one. Rather than print an
-            empty or invented dollar column, the board shows production only. The
-            pipeline reads salaries the moment a file exists, so this fills in
-            without any modelling change.
+            Pricing production against pay needs a salary for every player, and
+            no free licensed source publishes one. So the board shows production
+            and stops there rather than printing an invented dollar column. The
+            pipeline picks salaries up the moment a file exists, with no
+            modelling change.
           </p>
         )}
 

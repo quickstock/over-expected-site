@@ -285,9 +285,11 @@ export type CoachingState =
   | { status: "error" }
   | { status: "ready"; data: CoachingData };
 
-/** The league's decision-EV dataset (coaching-{LG}.json). */
-export function useCoaching(league: League): CoachingState {
-  const r = useLayerFile<CoachingData>(`coaching-${league}.json`);
+/** The league's decision-EV dataset (coaching-{LG}.json). Pass null for a
+    league that doesn't ship the layer: nothing is fetched and the state
+    stays "loading". */
+export function useCoaching(league: League | null): CoachingState {
+  const r = useLayerFile<CoachingData>(league ? `coaching-${league}.json` : null);
   if (r.status === "ready") return { status: "ready", data: r.data! };
   return { status: r.status };
 }
@@ -298,9 +300,10 @@ export type DefenseState =
   | { status: "ready"; data: DefenseData };
 
 /** The league's team-defence dataset (defense-{LG}.json). Privileged and
-    NBA-only; the board renders the unavailable panel elsewhere. */
-export function useDefense(league: League): DefenseState {
-  const r = useLayerFile<DefenseData>(`defense-${league}.json`);
+    NBA-only. Pass null for a league that doesn't ship the layer: nothing is
+    fetched and the state stays "loading". */
+export function useDefense(league: League | null): DefenseState {
+  const r = useLayerFile<DefenseData>(league ? `defense-${league}.json` : null);
   if (r.status === "ready") return { status: "ready", data: r.data! };
   return { status: r.status };
 }
