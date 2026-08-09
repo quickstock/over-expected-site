@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useLeague, useLeagueData, usePlayerChunk } from "../data";
 import { ACTIVE_LEAGUES, ftNoun, leagueDef, type League } from "../leagues";
-import type { GameLine, LeaderboardRow, ShotValueRow } from "../types";
+import type {
+  FoulBreakdown,
+  GameLine,
+  LeaderboardRow,
+  SeasonDetail,
+  ShotValueRow,
+} from "../types";
 import { useTitle } from "../lib/useTitle";
 import { divergingText } from "../lib/color";
 import { int, ordinal, signed } from "../lib/format";
@@ -15,8 +21,7 @@ import CourtZones from "../components/charts/CourtZones";
 import FoulLedger from "../components/player/FoulLedger";
 import PercentileSliders from "../components/player/PercentileSliders";
 import CareerStrip from "../components/player/CareerStrip";
-import RapmPanel from "../components/player/RapmPanel";
-import ReliabilityContext from "../components/player/ReliabilityContext";
+import PlayerDefense from "../components/player/PlayerDefense";
 
 const FORM_WINDOWS = ["5", "10", "15", "20"];
 
@@ -68,6 +73,82 @@ function Stat({
 }
 
 type Lens = "value" | "making" | "fouls";
+
+/**
+ * Where his shots came from, one section shared by all three lenses and
+ * placed directly under the rankings.
+ *
+ * The court draws shot locations, and it is the same court whichever lens is
+ * open, because zone-level make-vs-expected is not in the export — so the
+ * copy says what it is showing rather than letting the reader assume it
+ * re-cuts per metric. The and-1 view is the only foul-drawing a court can
+ * place at all: a free throw is shot from the line and carries no coordinates
+ * of its own, so only fouls on a made shot have a location.
+ */
+function CourtSection({
+  detail,
+  chunkStatus,
+  court,
+  fouls,
+  season,
+  mode,
+  onMode,
+}: {
+  detail: SeasonDetail | undefined;
+  chunkStatus: "loading" | "error" | "ready";
+  court: "nba" | "fiba";
+  fouls: FoulBreakdown | undefined;
+  season: string;
+  mode: string;
+  onMode: (m: string) => void;
+}) {
+  const showFouls = !!fouls && mode === "fouls";
+  const canToggle = !!fouls && fouls.located > 0;
+  return (
+    <section className="mt-12">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+            Where it happens
+          </h2>
+          <p className="mt-1.5 max-w-prose text-sm text-ink-soft">
+            {showFouls
+              ? `And-1s by zone, ${season}. A free throw is taken from the line and carries no location of its own, so fouls on a made shot are the only drawn fouls a court can place.`
+              : `Field-goal attempts by zone, ${season}: the shot diet every number on this page is built from.`}
+          </p>
+        </div>
+        {canToggle && (
+          <SegmentedControl
+            ariaLabel="Court view"
+            options={[
+              { value: "attempts", label: "All attempts" },
+              { value: "fouls", label: "And-1s" },
+            ]}
+            value={mode}
+            onChange={onMode}
+          />
+        )}
+      </div>
+      {detail ? (
+        <CourtZones
+          court={court}
+          zones={showFouls ? fouls!.zones : detail.zones}
+          footnote={
+            showFouls
+              ? `${int(fouls!.located)} of ${int(fouls!.and1)} and-1s have an official shot location. Fouled misses are counted in his total but never placed.`
+              : undefined
+          }
+          className="mt-6 max-w-[520px]"
+        />
+      ) : chunkStatus === "error" ? null : (
+        <div
+          className="mt-6 aspect-[500/434] max-w-[520px] animate-pulse rounded bg-wash"
+          aria-busy="true"
+        />
+      )}
+    </section>
+  );
+}
 
 /** Percentile of `v` within `pool` (share at or below), or null if empty. */
 function pctOf(pool: number[], v: number): number | null {
@@ -270,48 +351,38 @@ export default function Player() {
   useTitle(row ? `${row.name} · Over Expected` : "Over Expected");
   const animatedPer100 = useCountUp(row?.per100 ?? 0);
 
-  // League file still in flight (cold deep link): skeleton, not "not found".
-  if (!data)
-    return (
-      <div className="mx-auto max-w-5xl px-6 py-24" aria-busy="true">
-        <div className="h-10 w-72 animate-pulse rounded bg-wash" />
-        <div className="mt-6 h-64 animate-pulse rounded bg-wash" />
-      </div>
-    );
-  if (!row || !season) return <NotFound qualify={qualify} />;
-
   const detail =
-    chunk.status === "ready" ? chunk.chunk[String(row.id)] : undefined;
+    chunk.status === "ready" && row ? chunk.chunk[String(row.id)] : undefined;
   const fouls = detail?.fouls;
 
   // Shot-value lens data: this player's row and the season's qualified pool.
-  const svPool = data.shotValue?.[season] ?? [];
+  const svPool = (season && data?.shotValue?.[season]) || [];
   const sv = svPool.find((r) => r.id === id);
 
   // Per-game series reframed for the active lens. Foul-drawing keeps the FTA
   // line; shot-making swaps in FG points; shot value adds the drawn-FT points
   // (banked at his own FT%, expected at the league rate).
-  const LEAGUE_FT = data.meta.leagueFt;
   const lensGames = useMemo<GameLine[]>(() => {
     const gs = detail?.games ?? [];
     if (lens === "making") return gs.map((g) => [g[3] ?? 0, g[4] ?? 0, g[2]]);
     if (lens === "value") {
-      const ft = sv?.ftPct ?? LEAGUE_FT;
+      const leagueFt = data?.meta.leagueFt ?? 0;
+      const ft = sv?.ftPct ?? leagueFt;
       return gs.map((g) => [
         (g[3] ?? 0) + g[0] * ft,
-        (g[4] ?? 0) + g[1] * LEAGUE_FT,
+        (g[4] ?? 0) + g[1] * leagueFt,
         g[2],
       ]);
     }
     return gs;
-  }, [detail, lens, sv]);
+  }, [detail, lens, sv, data]);
 
   // Career trajectory for the active lens, built from the shipped per-season
   // shot-value rows (cast to the CareerStrip row shape it reads: season+per100).
   const svCareer = useMemo<LeaderboardRow[]>(() => {
-    return data.meta.seasons
+    return (data?.meta.seasons ?? [])
       .map((s) => {
-        const r = data.shotValue?.[s]?.find((x) => x.id === id);
+        const r = data?.shotValue?.[s]?.find((x) => x.id === id);
         if (!r) return null;
         return {
           season: s,
@@ -320,6 +391,20 @@ export default function Player() {
       })
       .filter((r): r is LeaderboardRow => r !== null);
   }, [data, id, lens]);
+
+  // Every hook above runs on every render, including the loading and
+  // not-found paths below. Two of these used to sit *after* these returns,
+  // so the hook count changed the moment a league's data landed and React
+  // error #310 blanked the route — which is what a deep link to a league
+  // that lost the boot race actually did.
+  if (!data)
+    return (
+      <div className="mx-auto max-w-5xl px-6 py-24" aria-busy="true">
+        <div className="h-10 w-72 animate-pulse rounded bg-wash" />
+        <div className="mt-6 h-64 animate-pulse rounded bg-wash" />
+      </div>
+    );
+  if (!row || !season) return <NotFound qualify={qualify} />;
 
   const myCareer = career.byId.get(id ?? "");
   const careerPer100 = myCareer ? (myCareer.ftaoe / myCareer.poss) * 100 : null;
@@ -460,6 +545,17 @@ export default function Player() {
         />
       </section>
 
+      {/* where the shots come from, directly under the rankings */}
+      <CourtSection
+        detail={detail}
+        chunkStatus={chunk.status}
+        court={def.court}
+        fouls={fouls}
+        season={season}
+        mode={courtMode}
+        onMode={setCourtMode}
+      />
+
       {/* the gap */}
       <section className="mt-14">
         <h2 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
@@ -507,52 +603,6 @@ export default function Player() {
           />
         ) : chunk.status === "error" ? null : (
           <div className="mt-6 h-[200px] animate-pulse rounded bg-wash" aria-busy="true" />
-        )}
-      </section>
-
-      {/* where it happens */}
-      <section className="mt-14">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
-              Where it happens
-            </h2>
-            <p className="mt-1.5 text-sm text-ink-soft">
-              {fouls && courtMode === "fouls"
-                ? `And-1s by zone, ${season}: the only ${def.sftaOnly ? "shooting fouls" : "drawn fouls"} with an official shot location.`
-                : `Charged field-goal attempts by zone, ${season}.`}
-            </p>
-          </div>
-          {fouls && fouls.located > 0 && (
-            <SegmentedControl
-              ariaLabel="Court view"
-              options={[
-                { value: "attempts", label: "All attempts" },
-                { value: "fouls", label: "And-1s" },
-              ]}
-              value={courtMode}
-              onChange={setCourtMode}
-            />
-          )}
-        </div>
-        {detail ? (
-          <CourtZones
-            court={def.court}
-            zones={
-              fouls && courtMode === "fouls" ? fouls.zones : detail.zones
-            }
-            footnote={
-              fouls && courtMode === "fouls"
-                ? `${int(fouls.located)} of ${int(fouls.and1)} and-1s have an official shot location. Fouled misses are itemized below the court, never placed.`
-                : undefined
-            }
-            className="mt-6 max-w-[520px]"
-          />
-        ) : chunk.status === "error" ? null : (
-          <div
-            className="mt-6 aspect-[500/434] max-w-[520px] animate-pulse rounded bg-wash"
-            aria-busy="true"
-          />
         )}
       </section>
 
@@ -626,6 +676,17 @@ export default function Player() {
           <>
             <ShotQualityPanel lens={lens} season={season} sv={sv} pool={svPool} />
 
+            {/* where the shots come from, directly under the rankings */}
+            <CourtSection
+              detail={detail}
+              chunkStatus={chunk.status}
+              court={def.court}
+              fouls={fouls}
+              season={season}
+              mode={courtMode}
+              onMode={setCourtMode}
+            />
+
             {/* the gap, in points */}
             <section className="mt-14">
               <h2 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
@@ -674,21 +735,6 @@ export default function Player() {
               )}
             </section>
 
-            {/* where it happens */}
-            <section className="mt-14">
-              <h2 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
-                Where it happens
-              </h2>
-              <p className="mt-1.5 text-sm text-ink-soft">
-                Charged field-goal attempts by zone, {season}.
-              </p>
-              {detail ? (
-                <CourtZones court={def.court} zones={detail.zones} className="mt-6 max-w-[520px]" />
-              ) : chunk.status === "error" ? null : (
-                <div className="mt-6 aspect-[500/434] max-w-[520px] animate-pulse rounded bg-wash" aria-busy="true" />
-              )}
-            </section>
-
             {/* free-throw ledger, relevant to shot value (FTs count), not making */}
             {lens === "value" && fouls && (
               <section className="mt-14">
@@ -729,12 +775,14 @@ export default function Player() {
           </p>
         ))}
 
-      {/* does this player's sample support the figures above? uses his ACTUAL
-          attempt count against his league's own measured reliability curve */}
-      {sv && <ReliabilityContext league={league} attempts={sv.fga} />}
-
-      {/* lineup impact — its own layer file, lazy, absent for most leagues */}
-      <RapmPanel league={league} season={season} playerId={row.id} />
+      {/* defence: his own adjusted plus-minus, then the team defence he played
+          in. Lazy layer files, NBA only. */}
+      <PlayerDefense
+        league={league}
+        season={season}
+        playerId={row.id}
+        teams={row.teams}
+      />
 
       <p className="mt-16 border-t border-line pt-6">
         <Link

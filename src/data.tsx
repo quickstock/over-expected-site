@@ -248,9 +248,11 @@ export type RapmState =
   | { status: "error" }
   | { status: "ready"; data: RapmData };
 
-/** The active/explicit league's RAPM dataset (rapm-{LG}.json). */
-export function useRapm(league: League): RapmState {
-  const r = useLayerFile<RapmData>(`rapm-${league}.json`);
+/** The active/explicit league's RAPM dataset (rapm-{LG}.json). Pass null for
+    a league that doesn't ship the layer: nothing is fetched and the state
+    stays "loading". */
+export function useRapm(league: League | null): RapmState {
+  const r = useLayerFile<RapmData>(league ? `rapm-${league}.json` : null);
   if (r.status === "ready") return { status: "ready", data: r.data! };
   return { status: r.status };
 }
