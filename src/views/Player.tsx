@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useLeague, useLeagueData, usePlayerChunk } from "../data";
+import { useLeague, useLeagueData, usePlayerChunk, useRapm } from "../data";
 import { ACTIVE_LEAGUES, ftNoun, leagueDef, type League } from "../leagues";
 import type {
   FoulBreakdown,
@@ -21,7 +21,7 @@ import CourtZones from "../components/charts/CourtZones";
 import FoulLedger from "../components/player/FoulLedger";
 import PercentileSliders from "../components/player/PercentileSliders";
 import CareerStrip from "../components/player/CareerStrip";
-import PlayerDefense from "../components/player/PlayerDefense";
+import DefenseLens from "../components/player/DefenseLens";
 
 const FORM_WINDOWS = ["5", "10", "15", "20"];
 
@@ -72,7 +72,7 @@ function Stat({
   );
 }
 
-type Lens = "value" | "making" | "fouls";
+type Lens = "value" | "making" | "fouls" | "defense";
 
 /**
  * Where his shots came from, one section shared by all three lenses and
@@ -270,11 +270,18 @@ function ShotQualityPanel({ lens, season, sv, pool }: {
   );
 }
 
+/** The three offensive lenses every league ships. Defence is appended for
+    leagues carrying the lineup layer, since adjusted plus-minus is the only
+    defensive measure this site puts under a player's name. */
 const LENS_OPTS: { value: Lens; label: string }[] = [
   { value: "value", label: "Shot value" },
   { value: "making", label: "Shot-making" },
   { value: "fouls", label: "Foul-drawing" },
 ];
+const DEFENSE_OPT: { value: Lens; label: string } = {
+  value: "defense",
+  label: "Defense",
+};
 
 export default function Player() {
   const { lg, id } = useParams();
@@ -295,9 +302,13 @@ export default function Player() {
   const [params, setParams] = useSearchParams();
   const [formWindow, setFormWindow] = useState("10");
   const [courtMode, setCourtMode] = useState("attempts");
-  const lens = (LENS_OPTS.some((o) => o.value === params.get("lens"))
+  const hasDefense = !!def.layers?.lineups;
+  const lensOpts = hasDefense ? [...LENS_OPTS, DEFENSE_OPT] : LENS_OPTS;
+  const lens = (lensOpts.some((o) => o.value === params.get("lens"))
     ? params.get("lens")
     : "fouls") as Lens;
+  // Lazy layer file; nothing is fetched for leagues without the layer.
+  const rapmState = useRapm(hasDefense ? league : null);
 
   const qualify = data?.meta.qualifyPossessions ?? 0;
 
@@ -392,6 +403,18 @@ export default function Player() {
       .filter((r): r is LeaderboardRow => r !== null);
   }, [data, id, lens]);
 
+  // Defensive RAPM by season, in the shape CareerStrip reads.
+  const rapmCareer = useMemo<LeaderboardRow[]>(() => {
+    if (rapmState.status !== "ready") return [];
+    const { meta, players } = rapmState.data;
+    return meta.seasons
+      .map((s) => {
+        const r = players[s]?.find((x) => x.id === id);
+        return r ? ({ season: s, per100: r.dP } as LeaderboardRow) : null;
+      })
+      .filter((r): r is LeaderboardRow => r !== null);
+  }, [rapmState, id]);
+
   // Every hook above runs on every render, including the loading and
   // not-found paths below. Two of these used to sit *after* these returns,
   // so the hook count changed the moment a league's data landed and React
@@ -458,7 +481,7 @@ export default function Player() {
         <div className="mt-6">
           <SegmentedControl
             ariaLabel="Metric"
-            options={LENS_OPTS}
+            options={lensOpts}
             value={lens}
             onChange={(l) => {
               const next = new URLSearchParams(params);
@@ -671,7 +694,30 @@ export default function Player() {
         </>
       )}
 
+      {lens === "defense" &&
+        (rapmState.status === "ready" ? (
+          <DefenseLens
+            season={season}
+            playerId={row.id}
+            seasonRows={rapmState.data.players[season] ?? []}
+            pooledRows={rapmState.data.pooled}
+            floor={rapmState.data.meta.qualifyPoss}
+            bySeason={rapmCareer}
+            onSelectSeason={setSeason}
+          />
+        ) : rapmState.status === "error" ? (
+          <p className="mt-10 rounded border border-line-soft bg-wash px-4 py-10 text-center text-sm text-ink-faint">
+            The defensive data failed to load. Refresh to retry.
+          </p>
+        ) : (
+          <div className="mt-10" aria-busy="true">
+            <div className="h-28 animate-pulse rounded bg-wash" />
+            <div className="mt-6 h-40 animate-pulse rounded bg-wash" />
+          </div>
+        ))}
+
       {lens !== "fouls" &&
+        lens !== "defense" &&
         (sv ? (
           <>
             <ShotQualityPanel lens={lens} season={season} sv={sv} pool={svPool} />
@@ -775,14 +821,6 @@ export default function Player() {
           </p>
         ))}
 
-      {/* defence: his own adjusted plus-minus, then the team defence he played
-          in. Lazy layer files, NBA only. */}
-      <PlayerDefense
-        league={league}
-        season={season}
-        playerId={row.id}
-        teams={row.teams}
-      />
 
       <p className="mt-16 border-t border-line pt-6">
         <Link
