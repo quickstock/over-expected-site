@@ -5,20 +5,26 @@ import { useMeasure } from "../../lib/useMeasure";
 import { useRevealed } from "../../lib/useRevealed";
 
 /**
- * Career trajectory: FTAOE per 100 by season, dots in the diverging
+ * Career trajectory: one per-100 metric by season, dots in the diverging
  * encoding, clickable to switch the page's season. Zero line = league
  * average each season (anchored, so seasons are comparable).
+ *
+ * The strip is reused across lenses, so `metricLabel` names whatever is
+ * plotted; it reaches screen readers, which otherwise hear the foul-drawing
+ * unit on a page showing defensive RAPM.
  */
 export default function CareerStrip({
   rows,
   activeSeason,
   onSelect,
+  metricLabel = "FTAOE per 100",
   height = 170,
   className = "",
 }: {
   rows: LeaderboardRow[];
   activeSeason: string;
   onSelect: (season: string) => void;
+  metricLabel?: string;
   height?: number;
   className?: string;
 }) {
@@ -45,7 +51,7 @@ export default function CareerStrip({
           width={width}
           height={height}
           role="img"
-          aria-label={`FTAOE per 100 by season: ${rows
+          aria-label={`${metricLabel} by season: ${rows
             .map((r) => `${r.season} ${signed(r.per100, 1)}`)
             .join(", ")}.`}
         >

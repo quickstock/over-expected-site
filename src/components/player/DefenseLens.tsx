@@ -13,12 +13,17 @@
  * There is no game-by-game defensive series in the export, so this lens has no
  * gap arc and no form strip. It says so rather than padding the page.
  */
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { LeaderboardRow, RapmRow } from "../../types";
+import type { League } from "../../leagues";
 import { divergingText } from "../../lib/color";
 import { int, ordinal, signed } from "../../lib/format";
 import PercentileSliders from "./PercentileSliders";
 import CareerStrip from "./CareerStrip";
+import DefenseSpread from "../charts/DefenseSpread";
+import ODScatter from "../charts/ODScatter";
+
+const Z = 1.959964;
 
 /** Share of the pool at or below `v`, or null when the pool is empty. */
 function pctOf(pool: number[], v: number): number | null {
@@ -54,6 +59,7 @@ function Stat({
 }
 
 export default function DefenseLens({
+  league,
   season,
   playerId,
   seasonRows,
@@ -62,6 +68,7 @@ export default function DefenseLens({
   bySeason,
   onSelectSeason,
 }: {
+  league: League;
   season: string;
   playerId: string;
   /** Every player's RAPM row for this season. */
@@ -74,12 +81,14 @@ export default function DefenseLens({
   bySeason: LeaderboardRow[];
   onSelectSeason: (s: string) => void;
 }) {
+  const navigate = useNavigate();
   const row = seasonRows.find((r) => r.id === playerId);
   const pooled = pooledRows.find((r) => r.id === playerId);
 
   const qualified = (rows: RapmRow[]) =>
     rows.filter((r) => r.possOff + r.possDef >= floor);
-  const seasonPool = qualified(seasonRows).map((r) => r.dP);
+  const qualifiedSeason = qualified(seasonRows);
+  const seasonPool = qualifiedSeason.map((r) => r.dP);
   const pooledPool = qualified(pooledRows).map((r) => r.dP);
 
   if (!row)
@@ -98,6 +107,12 @@ export default function DefenseLens({
   // than by his own possessions.
   const priorShift = row.dP - row.d;
   const pct = thin ? null : pctOf(seasonPool, row.dP);
+  // How much of the field his own 95% interval still covers. Quoted next to
+  // the figure so the percentile above cannot be read as a verdict.
+  const ci: [number, number] = [row.dP - Z * row.seD, row.dP + Z * row.seD];
+  const overlapped = qualifiedSeason.filter(
+    (q) => q.id !== row.id && q.dP >= ci[0] && q.dP <= ci[1],
+  ).length;
   const pooledPct =
     pooled && pooled.possOff + pooled.possDef >= floor
       ? pctOf(pooledPool, pooled.dP)
@@ -218,6 +233,79 @@ export default function DefenseLens({
         )}
       </p>
 
+      {/* against the league, with his own interval to the same scale */}
+      {!thin && qualifiedSeason.length > 20 && (
+        <section className="mt-14">
+          <h2 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+            Against the league
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">
+            Every qualified defender in {season}, placed by defensive RAPM. His
+            95% interval is drawn underneath to the same scale.
+          </p>
+          <div className="mt-4">
+            <DefenseSpread rows={qualifiedSeason} playerId={playerId} />
+          </div>
+          <p className="mt-2 max-w-2xl text-xs leading-relaxed text-ink-faint">
+            The bar is the honest counterweight to the percentile above it.{" "}
+            {overlapped === 0 ? (
+              <>
+                Not one of the{" "}
+                <span className="font-mono tnum">
+                  {qualifiedSeason.length - 1}
+                </span>{" "}
+                other qualified defenders falls inside it, which is rare: he
+                separates from the entire field at this level of confidence.
+              </>
+            ) : (
+              <>
+                <span className="font-mono tnum">{overlapped}</span> of the{" "}
+                <span className="font-mono tnum">
+                  {qualifiedSeason.length - 1}
+                </span>{" "}
+                other qualified defenders fall inside it, and he is not
+                separated from any of them at this level of confidence. What
+                the percentile can support is the direction, not the exact
+                place in the order.
+              </>
+            )}
+          </p>
+        </section>
+      )}
+
+      {/* offense against defense. Gated on the floor like the figure above:
+          a player under it is not in the qualified field, so he would be
+          missing from his own chart. */}
+      {!thin && qualifiedSeason.length > 20 && (
+        <section className="mt-14">
+          <h2 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+            Both ends at once
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">
+            Offense across, defense up, one dot per qualified player in{" "}
+            {season}. Whiskers are a standard error on each axis. Top-right
+            helps at both ends; tap another dot for that player.
+          </p>
+          <div className="mt-4">
+            <ODScatter
+              rows={qualifiedSeason}
+              variant="prior"
+              highlightId={playerId}
+              height={420}
+              onSelect={(pid) =>
+                navigate(
+                  `/player/${league}/${pid}?season=${encodeURIComponent(season)}&lens=defense`,
+                )
+              }
+            />
+          </div>
+          <p className="mt-2 max-w-2xl text-xs leading-relaxed text-ink-faint">
+            The two axes come from one fit, so a player who is carried by his
+            offense sits right and low, and a specialist sits left and high.
+          </p>
+        </section>
+      )}
+
       {/* career */}
       {bySeason.length > 1 && (
         <section className="mt-14">
@@ -232,6 +320,7 @@ export default function DefenseLens({
             rows={bySeason}
             activeSeason={season}
             onSelect={onSelectSeason}
+            metricLabel="Defensive RAPM per 100"
             className="mt-4 max-w-2xl"
           />
         </section>

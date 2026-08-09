@@ -14,11 +14,15 @@ export default function ODScatter({
   rows,
   variant,
   onSelect,
+  highlightId,
   height = 460,
 }: {
   rows: RapmRow[];
   variant: "prior" | "plain";
   onSelect?: (id: string) => void;
+  /** One player pulled out of the field: ink ring, always labelled, drawn
+      last so nothing sits on top of him. Used by the player card. */
+  highlightId?: string;
   height?: number;
 }) {
   const [wrapRef, width] = useMeasure<HTMLDivElement>();
@@ -64,6 +68,10 @@ export default function ODScatter({
     return new Set([...byNet.slice(0, 6), ...byNet.slice(-4)].map((p) => p.id));
   }, [pts]);
 
+  // The highlighted player is drawn after the field, so he is never buried
+  // under a neighbouring dot.
+  const hero = highlightId ? pts.find((p) => p.id === highlightId) : undefined;
+
   return (
     <div ref={wrapRef} className="relative">
       {width > 0 && (
@@ -107,8 +115,14 @@ export default function ODScatter({
                   strokeWidth={1}
                   opacity={0.28}
                 />
-                <circle cx={0} cy={0} r={4} fill={divergingColor(p.net)} opacity={0.9} />
-                {labeled.has(p.id) && (
+                <circle
+                  cx={0}
+                  cy={0}
+                  r={4}
+                  fill={divergingColor(p.net)}
+                  opacity={hero ? (p.id === hero.id ? 0 : 0.45) : 0.9}
+                />
+                {labeled.has(p.id) && p.id !== hero?.id && (
                   <text x={0} y={-7} textAnchor="middle" fontSize={9.5} className="font-mono" fill="var(--color-ink-soft)">
                     {p.name}
                   </text>
@@ -116,6 +130,61 @@ export default function ODScatter({
               </g>
             ))}
           </g>
+
+          {hero && (
+            <g transform={`translate(${x(hero.x).toFixed(1)} ${y(hero.y).toFixed(1)})`}>
+              <line
+                x1={x(hero.x - hero.seX) - x(hero.x)}
+                x2={x(hero.x + hero.seX) - x(hero.x)}
+                y1={0}
+                y2={0}
+                stroke="var(--color-ink)"
+                strokeWidth={1.25}
+                opacity={0.5}
+              />
+              <line
+                x1={0}
+                x2={0}
+                y1={y(hero.y - hero.seY) - y(hero.y)}
+                y2={y(hero.y + hero.seY) - y(hero.y)}
+                stroke="var(--color-ink)"
+                strokeWidth={1.25}
+                opacity={0.5}
+              />
+              <circle
+                cx={0}
+                cy={0}
+                r={6}
+                fill={divergingColor(hero.net)}
+                stroke="var(--color-ink)"
+                strokeWidth={1.75}
+              />
+              {/* the label is the longest thing in the figure, so it anchors
+                  away from whichever edge it would otherwise run off */}
+              {(() => {
+                const hx = x(hero.x);
+                const anchor =
+                  hx > pad.left + innerW - 80
+                    ? "end"
+                    : hx < pad.left + 80
+                      ? "start"
+                      : "middle";
+                return (
+                  <text
+                    x={anchor === "end" ? 7 : anchor === "start" ? -7 : 0}
+                    y={-12}
+                    textAnchor={anchor}
+                    fontSize={11}
+                    fontWeight={600}
+                    className="font-display"
+                    fill="var(--color-ink)"
+                  >
+                    {hero.name}
+                  </text>
+                );
+              })()}
+            </g>
+          )}
         </svg>
       )}
     </div>

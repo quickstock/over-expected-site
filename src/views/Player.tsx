@@ -697,6 +697,7 @@ export default function Player() {
       {lens === "defense" &&
         (rapmState.status === "ready" ? (
           <DefenseLens
+            league={league}
             season={season}
             playerId={row.id}
             seasonRows={rapmState.data.players[season] ?? []}
@@ -809,6 +810,11 @@ export default function Player() {
                   rows={svCareer}
                   activeSeason={season}
                   onSelect={setSeason}
+                  metricLabel={
+                    lens === "value"
+                      ? "Points over expected per 100"
+                      : "FG points over expected per 100"
+                  }
                   className="mt-4 max-w-2xl"
                 />
               </section>
