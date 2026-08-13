@@ -12,6 +12,7 @@ function useNavItems() {
   return [
     { to: "/leaderboard", label: "Leaderboard" },
     { to: "/league", label: "League" },
+    { to: "/compare", label: "Compare" },
     { to: "/referees", label: "Referees" },
     { to: "/methodology", label: "Methodology" },
   ];

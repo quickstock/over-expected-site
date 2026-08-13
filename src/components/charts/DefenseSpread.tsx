@@ -8,6 +8,11 @@
  * bar shows how many players he is genuinely separated from. Anyone reading
  * "96th percentile" should be able to see, in the same glance, how much of the
  * field that interval still covers.
+ *
+ * With `playerBId` set (the compare page) a second player is lifted out the
+ * same way: two label rows, a letter chip in each hero dot, and two interval
+ * rulers stacked on one scale, so whether the bars overlap each other is
+ * readable at a glance.
  */
 import { useMemo } from "react";
 import type { RapmRow } from "../../types";
@@ -18,13 +23,21 @@ import { useRevealed } from "../../lib/useRevealed";
 
 const Z = 1.959964;
 
+const ciOf = (p: RapmRow): [number, number] => [
+  p.dP - Z * p.seD,
+  p.dP + Z * p.seD,
+];
+
 export default function DefenseSpread({
   rows,
   playerId,
+  playerBId,
 }: {
   /** Qualified players for the season, already filtered to the floor. */
   rows: RapmRow[];
   playerId: string;
+  /** Second player to lift out of the field (head-to-head mode). */
+  playerBId?: string;
 }) {
   const [wrapRef, width] = useMeasure<HTMLDivElement>();
   const revealed = useRevealed(wrapRef, 0.2);
@@ -33,32 +46,36 @@ export default function DefenseSpread({
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const me = rows.find((r) => r.id === playerId);
+  const meB = playerBId ? rows.find((r) => r.id === playerBId) : undefined;
+  const dual = !!meB;
   const narrow = width > 0 && width < 560;
   const padL = 14;
   const padR = 14;
-  const labelBand = 46;
+  // Two lifted players need two label rows above the swarm.
+  const labelBand = dual ? 82 : 46;
   const innerW = Math.max(40, width - padL - padR);
   const r = narrow ? 2.6 : 3.1;
 
-  const ci: [number, number] | null = me
-    ? [me.dP - Z * me.seD, me.dP + Z * me.seD]
-    : null;
+  const ci: [number, number] | null = me ? ciOf(me) : null;
+  const ciB: [number, number] | null = meB ? ciOf(meB) : null;
 
-  // Domain has to hold both the field and his interval, or a wide interval
+  // Domain has to hold the field and every drawn interval, or a wide interval
   // gets its caps clipped off the edge and reads narrower than it is.
   const { lo, hi } = useMemo(() => {
     const vals = rows.map((x) => x.dP);
     if (vals.length === 0) return { lo: -1, hi: 1 };
     let min = Math.min(...vals);
     let max = Math.max(...vals);
-    if (ci) {
-      min = Math.min(min, ci[0]);
-      max = Math.max(max, ci[1]);
+    for (const c of [ci, ciB]) {
+      if (c) {
+        min = Math.min(min, c[0]);
+        max = Math.max(max, c[1]);
+      }
     }
     const pad = Math.max(0.4, (max - min) * 0.06);
     return { lo: min - pad, hi: max + pad };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, ci?.[0], ci?.[1]]);
+  }, [rows, ci?.[0], ci?.[1], ciB?.[0], ciB?.[1]]);
 
   const x = (v: number) => padL + ((v - lo) / (hi - lo)) * innerW;
   const swarmY = labelBand + (narrow ? 40 : 46);
@@ -99,7 +116,8 @@ export default function DefenseSpread({
     : swarmY;
   const axisY = Math.max(swarmBottom + 18, swarmY + 34);
   const rulerY = axisY + 44;
-  const height = rulerY + 30;
+  const rulerYB = rulerY + 26;
+  const height = (dual ? rulerYB : rulerY) + 30;
 
   if (rows.length === 0 || !me || !ci) return null;
 
@@ -133,12 +151,11 @@ export default function DefenseSpread({
           width={width}
           height={height}
           role="img"
-          aria-label={`Defensive RAPM for ${rows.length} qualified players. ${
-            me.name
-          } is at ${signed(me.dP, 1)} per 100, with a 95% interval from ${signed(
-            ci[0],
-            1,
-          )} to ${signed(ci[1], 1)} that still covers ${overlapped} other players.`}
+          aria-label={
+            dual
+              ? `Defensive RAPM for ${rows.length} qualified players. ${me.name} is at ${signed(me.dP, 1)} per 100 and ${meB!.name} at ${signed(meB!.dP, 1)}, each with a 95% interval drawn to the same scale.`
+              : `Defensive RAPM for ${rows.length} qualified players. ${me.name} is at ${signed(me.dP, 1)} per 100, with a 95% interval from ${signed(ci[0], 1)} to ${signed(ci[1], 1)} that still covers ${overlapped} other players.`
+          }
         >
           {/* the field */}
           <g style={sweep}>
@@ -149,7 +166,7 @@ export default function DefenseSpread({
                 cy={d.py}
                 r={r}
                 fill={divergingColor(d.row.dP)}
-                opacity={d.row.id === me.id ? 0 : 0.42}
+                opacity={d.row.id === me.id || d.row.id === meB?.id ? 0 : 0.42}
               />
             ))}
           </g>
@@ -194,25 +211,16 @@ export default function DefenseSpread({
             better defence →
           </text>
 
-          {/* him */}
-          <line
-            x1={x(me.dP)}
-            x2={x(me.dP)}
-            y1={labelBand - 10}
-            y2={swarmY - r - 3}
-            stroke="var(--color-line)"
-          />
-          <circle
-            cx={x(me.dP)}
-            cy={swarmY}
-            r={r + 2.6}
-            fill={divergingColor(me.dP)}
-            stroke="var(--color-ink)"
-            strokeWidth={1.75}
-          />
-          {/* anchored away from whichever edge the name would run off */}
-          {(() => {
-            const hx = x(me.dP);
+          {/* the lifted players: one label row each, connector down to the dot */}
+          {(dual
+            ? [
+                { p: me, c: ci, nameY: 16, valY: 30, rowBottom: 36, ry: rulerY },
+                { p: meB!, c: ciB!, nameY: 50, valY: 64, rowBottom: 70, ry: rulerYB },
+              ]
+            : [{ p: me, c: ci, nameY: 18, valY: 33, rowBottom: labelBand - 10, ry: rulerY }]
+          ).map(({ p, c, nameY, valY, rowBottom, ry }) => {
+            const hx = x(p.dP);
+            // anchored away from whichever edge the name would run off
             const anchor =
               hx > padL + innerW - 70
                 ? "end"
@@ -220,56 +228,115 @@ export default function DefenseSpread({
                   ? "start"
                   : "middle";
             const tx = anchor === "end" ? hx + 6 : anchor === "start" ? hx - 6 : hx;
+            // bar label sits at the left cap unless that would clip
+            const barAnchor = x(c[0]) < padL + 84 ? "start" : "end";
+            const barX = barAnchor === "end" ? x(c[0]) - 8 : x(c[1]) + 8;
             return (
-              <>
+              <g key={p.id}>
+                <line
+                  x1={hx}
+                  x2={hx}
+                  y1={rowBottom}
+                  y2={swarmY - r - 3}
+                  stroke="var(--color-line)"
+                />
+                <circle
+                  cx={hx}
+                  cy={swarmY}
+                  r={r + (dual ? 3.4 : 2.6)}
+                  fill={divergingColor(p.dP)}
+                  stroke="var(--color-ink)"
+                  strokeWidth={1.75}
+                />
+                {dual && (
+                  <text
+                    x={hx}
+                    y={swarmY}
+                    dy={2.6}
+                    textAnchor="middle"
+                    fontSize={8}
+                    fontWeight={700}
+                    className="font-mono"
+                    fill="var(--color-paper)"
+                  >
+                    {lastName(p.name).slice(0, 1)}
+                  </text>
+                )}
                 <text
                   x={tx}
-                  y={18}
+                  y={nameY}
                   textAnchor={anchor}
                   fontSize={12.5}
                   fontWeight={600}
                   className="font-display"
                   fill="var(--color-ink)"
                 >
-                  {lastName(me.name)}
+                  {lastName(p.name)}
                 </text>
                 <text
                   x={tx}
-                  y={33}
+                  y={valY}
                   textAnchor={anchor}
                   fontSize={11}
                   className="font-mono tnum"
                   fill="var(--color-ink-soft)"
                 >
-                  {signed(me.dP, 1)}
+                  {signed(p.dP, 1)}
                 </text>
-              </>
-            );
-          })()}
 
-          {/* his interval, to the same scale as the field above */}
-          <line
-            x1={x(ci[0])}
-            x2={x(ci[1])}
-            y1={rulerY}
-            y2={rulerY}
-            stroke="var(--color-ink-soft)"
-            strokeWidth={2}
-            strokeLinecap="round"
-          />
-          {[ci[0], ci[1]].map((v) => (
-            <line
-              key={v}
-              x1={x(v)}
-              x2={x(v)}
-              y1={rulerY - 5}
-              y2={rulerY + 5}
-              stroke="var(--color-ink-soft)"
-              strokeWidth={1.5}
-            />
-          ))}
-          <circle cx={x(me.dP)} cy={rulerY} r={3} fill="var(--color-ink-soft)" />
+                {/* the interval, to the same scale as the field above */}
+                <line
+                  x1={x(c[0])}
+                  x2={x(c[1])}
+                  y1={ry}
+                  y2={ry}
+                  stroke="var(--color-ink-soft)"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                />
+                {[c[0], c[1]].map((v) => (
+                  <line
+                    key={v}
+                    x1={x(v)}
+                    x2={x(v)}
+                    y1={ry - 5}
+                    y2={ry + 5}
+                    stroke="var(--color-ink-soft)"
+                    strokeWidth={1.5}
+                  />
+                ))}
+                <circle cx={hx} cy={ry} r={3} fill="var(--color-ink-soft)" />
+                {dual && (
+                  <text
+                    x={barX}
+                    y={ry + 3.5}
+                    textAnchor={barAnchor}
+                    fontSize={10}
+                    className="font-mono"
+                    fill="var(--color-ink-soft)"
+                  >
+                    {lastName(p.name)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* one caption for the ruler block */}
           {(() => {
+            if (dual)
+              return (
+                <text
+                  x={padL + innerW / 2}
+                  y={rulerYB + 19}
+                  textAnchor="middle"
+                  fontSize={10.5}
+                  className="font-mono"
+                  fill="var(--color-ink-soft)"
+                >
+                  95% intervals, same scale
+                </text>
+              );
             // Centred under the bar, but pulled inside whichever edge it
             // would otherwise run past.
             const cx = (x(ci[0]) + x(ci[1])) / 2;
