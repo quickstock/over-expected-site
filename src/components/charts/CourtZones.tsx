@@ -26,7 +26,56 @@ export interface Geometry {
   breakY: number;
   zones: Zone[];
   labels: LabelMap;
+  /** NBA.com-style fine zones (mid-range and the arc split by side), used by
+      the compare page's duel court. Keys are the canonical subzone ids that
+      subzoneKey() maps (zone, area) pairs onto. */
+  subzones: Zone[];
+  subLabels: LabelMap;
   markings: ReactElement;
+}
+
+/**
+ * Canonical subzone for a (zone, area) pair. Both pipelines ship the NBA
+ * area vocabulary (the NBA feed with "(LC)"-style suffixes, the European
+ * ones without), so labels are normalized before mapping. The European
+ * builds also split the restricted area and paint by side; those collapse
+ * into one rim / one paint zone, matching the NBA chart everyone knows.
+ * Returns null for backcourt heaves.
+ */
+export function subzoneKey(zone: string, area: string): string | null {
+  const a = area.replace(/\(\w+\)\s*$/, "").trim();
+  switch (zone) {
+    case "Restricted Area":
+      return "ra";
+    case "In The Paint (Non-RA)":
+      return "paint";
+    case "Left Corner 3":
+      return "c3L";
+    case "Right Corner 3":
+      return "c3R";
+    case "Mid-Range":
+      return (
+        {
+          "Left Side": "mrL",
+          "Left Side Center": "mrLC",
+          Center: "mrC",
+          "Right Side Center": "mrRC",
+          "Right Side": "mrR",
+        }[a] ?? "mrC"
+      );
+    case "Above the Break 3":
+      return (
+        {
+          "Left Side": "ab3L",
+          "Left Side Center": "ab3L",
+          Center: "ab3C",
+          "Right Side Center": "ab3R",
+          "Right Side": "ab3R",
+        }[a] ?? "ab3C"
+      );
+    default:
+      return null;
+  }
 }
 
 // NBA: hoop center (250, 52.5), 3pt arc r=237.5 breaking at y=142.
@@ -59,6 +108,54 @@ const NBA: Geometry = {
     "Left Corner 3": { x: 15, y: 71, rotate: true },
     "Right Corner 3": { x: 485, y: 71, rotate: true },
     "Above the Break 3": { x: 250, y: 342, caption: "above the break 3" },
+  },
+  // Fine zones, NBA.com-chart style. The dividing diagonals run from the
+  // hoop (250, 52.5) through the paint's bottom corners, hitting the arc at
+  // (130.6, 257.8) / (369.4, 257.8) and the baseline-side edge at y=420 at
+  // x=36.2 / 463.8.
+  subzones: [
+    { key: "ra", d: "M210 0 L210 52.5 A40 40 0 0 0 290 52.5 L290 0 Z" },
+    {
+      key: "paint",
+      d: "M170 0 H330 V190 H170 Z M210 0 L210 52.5 A40 40 0 0 0 290 52.5 L290 0 Z",
+      evenodd: true,
+    },
+    { key: "mrL", d: `M30 0 L30 ${NBA_BREAK} L170 ${NBA_BREAK} L170 0 Z` },
+    { key: "mrR", d: `M330 0 L330 ${NBA_BREAK} L470 ${NBA_BREAK} L470 0 Z` },
+    {
+      key: "mrLC",
+      d: `M30 ${NBA_BREAK} L170 ${NBA_BREAK} L170 190 L130.6 257.8 A237.5 237.5 0 0 1 30 ${NBA_BREAK} Z`,
+    },
+    {
+      key: "mrRC",
+      d: `M330 ${NBA_BREAK} L470 ${NBA_BREAK} A237.5 237.5 0 0 1 369.4 257.8 L330 190 Z`,
+    },
+    { key: "mrC", d: "M170 190 L330 190 L369.4 257.8 A237.5 237.5 0 0 1 130.6 257.8 Z" },
+    { key: "c3L", d: `M0 0 L0 ${NBA_BREAK} L30 ${NBA_BREAK} L30 0 Z` },
+    { key: "c3R", d: `M470 0 L470 ${NBA_BREAK} L500 ${NBA_BREAK} L500 0 Z` },
+    {
+      key: "ab3L",
+      d: `M0 ${NBA_BREAK} L30 ${NBA_BREAK} A237.5 237.5 0 0 0 130.6 257.8 L36.2 420 L0 420 Z`,
+    },
+    { key: "ab3C", d: "M130.6 257.8 A237.5 237.5 0 0 0 369.4 257.8 L463.8 420 L36.2 420 Z" },
+    {
+      key: "ab3R",
+      d: `M369.4 257.8 A237.5 237.5 0 0 0 470 ${NBA_BREAK} L500 ${NBA_BREAK} L500 420 L463.8 420 Z`,
+    },
+  ],
+  subLabels: {
+    ra: { x: 250, y: 84, caption: "at the rim" },
+    paint: { x: 250, y: 158, caption: "paint" },
+    mrL: { x: 100, y: 66, caption: "baseline" },
+    mrR: { x: 400, y: 66, caption: "baseline" },
+    mrLC: { x: 97, y: 200, caption: "mid left" },
+    mrRC: { x: 403, y: 200, caption: "mid right" },
+    mrC: { x: 250, y: 240, caption: "free-throw" },
+    c3L: { x: 15, y: 71, rotate: true },
+    c3R: { x: 485, y: 71, rotate: true },
+    ab3L: { x: 54, y: 316, caption: "left wing" },
+    ab3R: { x: 446, y: 316, caption: "right wing" },
+    ab3C: { x: 250, y: 356, caption: "top of the arc" },
   },
   markings: (
     <g fill="none" stroke="var(--color-ink-faint)" strokeWidth={1.6}>
@@ -104,6 +201,53 @@ const FIBA: Geometry = {
     "Left Corner 3": { x: 15, y: 55, rotate: true },
     "Right Corner 3": { x: 485, y: 55, rotate: true },
     "Above the Break 3": { x: 250, y: 342, caption: "above the break 3" },
+  },
+  // Same construction as the NBA subzones with FIBA measurements: diagonals
+  // from the hoop through the paint corners (168, 193), hitting the 6.75 m
+  // arc at (136.6, 246.8) / (363.4, 246.8) and y=420 at x=35.5 / 464.5.
+  subzones: [
+    { key: "ra", d: "M208 0 L208 52.5 A42 42 0 0 0 292 52.5 L292 0 Z" },
+    {
+      key: "paint",
+      d: "M168 0 H332 V193 H168 Z M208 0 L208 52.5 A42 42 0 0 0 292 52.5 L292 0 Z",
+      evenodd: true,
+    },
+    { key: "mrL", d: `M30 0 L30 ${FIBA_BREAK} L168 ${FIBA_BREAK} L168 0 Z` },
+    { key: "mrR", d: `M332 0 L332 ${FIBA_BREAK} L470 ${FIBA_BREAK} L470 0 Z` },
+    {
+      key: "mrLC",
+      d: `M30 ${FIBA_BREAK} L168 ${FIBA_BREAK} L168 193 L136.6 246.8 A225 225 0 0 1 30 ${FIBA_BREAK} Z`,
+    },
+    {
+      key: "mrRC",
+      d: `M332 ${FIBA_BREAK} L470 ${FIBA_BREAK} A225 225 0 0 1 363.4 246.8 L332 193 Z`,
+    },
+    { key: "mrC", d: "M168 193 L332 193 L363.4 246.8 A225 225 0 0 1 136.6 246.8 Z" },
+    { key: "c3L", d: `M0 0 L0 ${FIBA_BREAK} L30 ${FIBA_BREAK} L30 0 Z` },
+    { key: "c3R", d: `M470 0 L470 ${FIBA_BREAK} L500 ${FIBA_BREAK} L500 0 Z` },
+    {
+      key: "ab3L",
+      d: `M0 ${FIBA_BREAK} L30 ${FIBA_BREAK} A225 225 0 0 0 136.6 246.8 L35.5 420 L0 420 Z`,
+    },
+    { key: "ab3C", d: "M136.6 246.8 A225 225 0 0 0 363.4 246.8 L464.5 420 L35.5 420 Z" },
+    {
+      key: "ab3R",
+      d: `M363.4 246.8 A225 225 0 0 0 470 ${FIBA_BREAK} L500 ${FIBA_BREAK} L500 420 L464.5 420 Z`,
+    },
+  ],
+  subLabels: {
+    ra: { x: 250, y: 84, caption: "at the rim" },
+    paint: { x: 250, y: 158, caption: "paint" },
+    mrL: { x: 99, y: 48, caption: "baseline" },
+    mrR: { x: 401, y: 48, caption: "baseline" },
+    mrLC: { x: 95, y: 180, caption: "mid left" },
+    mrRC: { x: 405, y: 180, caption: "mid right" },
+    mrC: { x: 250, y: 235, caption: "free-throw" },
+    c3L: { x: 15, y: 55, rotate: true },
+    c3R: { x: 485, y: 55, rotate: true },
+    ab3L: { x: 52, y: 310, caption: "left wing" },
+    ab3R: { x: 448, y: 310, caption: "right wing" },
+    ab3C: { x: 250, y: 355, caption: "top of the arc" },
   },
   markings: (
     <g fill="none" stroke="var(--color-ink-faint)" strokeWidth={1.6}>

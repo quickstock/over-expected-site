@@ -22,6 +22,7 @@ import FoulLedger from "../components/player/FoulLedger";
 import PercentileSliders from "../components/player/PercentileSliders";
 import CareerStrip from "../components/player/CareerStrip";
 import DefenseLens from "../components/player/DefenseLens";
+import Headshot from "../components/Headshot";
 
 const FORM_WINDOWS = ["5", "10", "15", "20"];
 
@@ -454,13 +455,24 @@ export default function Player() {
       </Link>
 
       <header className="mt-6">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
-          {row.name}
-        </h1>
-        <p className="mt-3 text-sm text-ink-soft">
-          {row.teams.join(" → ")}
-          {row.pos ? ` · ${row.pos}` : ""} · {int(row.poss)} possessions
-        </p>
+        <div className="flex items-center gap-4 sm:gap-5">
+          <Headshot
+            league={league}
+            id={row.id}
+            name={row.name}
+            fallback="none"
+            className="h-16 w-16 sm:h-24 sm:w-24"
+          />
+          <div className="min-w-0">
+            <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
+              {row.name}
+            </h1>
+            <p className="mt-3 text-sm text-ink-soft">
+              {row.teams.join(" → ")}
+              {row.pos ? ` · ${row.pos}` : ""} · {int(row.poss)} possessions
+            </p>
+          </div>
+        </div>
         {seasons.length > 1 ? (
           <SegmentedControl
             ariaLabel="Season"

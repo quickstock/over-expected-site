@@ -23,6 +23,7 @@ import type {
 import { useTitle } from "../lib/useTitle";
 import { divergingColor, divergingText } from "../lib/color";
 import { int, lastName, ordinal, searchKey, signed } from "../lib/format";
+import Headshot from "../components/Headshot";
 import SegmentedControl from "../components/SegmentedControl";
 import CompareForm from "../components/charts/CompareForm";
 import CourtDuel from "../components/charts/CourtDuel";
@@ -413,9 +414,12 @@ export default function Compare() {
         {a ? (
           <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
             <span className="flex min-w-0 items-center gap-2.5">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink font-mono text-[10px] font-bold text-paper">
-                {aN.slice(0, 1)}
-              </span>
+              <Headshot
+                league={league}
+                id={a.id}
+                name={a.name}
+                className="h-10 w-10"
+              />
               <Link
                 to={`/player/${league}/${a.id}?season=${encodeURIComponent(a.season)}`}
                 className="min-w-0 truncate font-display text-xl font-semibold text-ink underline-offset-4 hover:underline"
@@ -441,9 +445,12 @@ export default function Compare() {
         {b ? (
           <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
             <span className="flex min-w-0 items-center gap-2.5">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink font-mono text-[10px] font-bold text-paper">
-                {bN.slice(0, 1)}
-              </span>
+              <Headshot
+                league={league}
+                id={b.id}
+                name={b.name}
+                className="h-10 w-10"
+              />
               <Link
                 to={`/player/${league}/${b.id}?season=${encodeURIComponent(b.season)}`}
                 className="min-w-0 truncate font-display text-xl font-semibold text-ink underline-offset-4 hover:underline"

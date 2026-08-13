@@ -18,14 +18,22 @@ import type { ZoneAgg } from "../../types";
 import { divergingText, divergingTint, scaleMax } from "../../lib/color";
 import { int, lastName } from "../../lib/format";
 import { useRevealed } from "../../lib/useRevealed";
-import { GEOMETRY, type CourtKind } from "./CourtZones";
+import { GEOMETRY, subzoneKey, type CourtKind } from "./CourtZones";
 
-/** Share gap (in percentage points) at which the color saturates. */
-const SAT_PP = 8;
+/** Share gap (in percentage points) at which the color saturates. Lower than
+    a coarse-zone chart would use, because splitting mid-range and the arc by
+    side splits the gaps too. */
+const SAT_PP = 6;
 
-function shareByZone(zones: ZoneAgg[]): Map<string, number> {
+/** Below this gap a zone reads "even" rather than crowning a leader. */
+const EVEN_PP = 0.75;
+
+function shareBySubzone(zones: ZoneAgg[]): Map<string, number> {
   const m = new Map<string, number>();
-  for (const z of zones) m.set(z.zone, (m.get(z.zone) ?? 0) + z.share);
+  for (const z of zones) {
+    const key = subzoneKey(z.zone, z.area);
+    if (key) m.set(key, (m.get(key) ?? 0) + z.share);
+  }
   return m;
 }
 
@@ -44,7 +52,7 @@ export default function CourtDuel({
   bZones: ZoneAgg[];
   className?: string;
 }) {
-  const { zones: ZONES, labels: LABELS, markings } = GEOMETRY[court];
+  const { subzones: ZONES, subLabels: LABELS, markings } = GEOMETRY[court];
   const wrapRef = useRef<HTMLDivElement>(null);
   const revealed = useRevealed(wrapRef);
 
@@ -55,8 +63,8 @@ export default function CourtDuel({
 
   // Positive = player one takes a larger share of his shots there.
   const deltas = useMemo(() => {
-    const a = shareByZone(aZones);
-    const b = shareByZone(bZones);
+    const a = shareBySubzone(aZones);
+    const b = shareBySubzone(bZones);
     const m = new Map<string, number>();
     for (const z of ZONES)
       m.set(z.key, ((a.get(z.key) ?? 0) - (b.get(z.key) ?? 0)) * 100);
@@ -76,6 +84,10 @@ export default function CourtDuel({
   // Map a share gap onto the diverging scale, saturating at SAT_PP points.
   const scaled = (deltaPp: number) => (deltaPp / SAT_PP) * scaleMax();
 
+  const zoneName = (key: string) =>
+    LABELS[key]?.caption ??
+    { c3L: "left corner 3", c3R: "right corner 3" }[key] ??
+    key;
   const biggest = [...deltas.entries()].sort(
     (x, y) => Math.abs(y[1]) - Math.abs(x[1]),
   )[0];
@@ -106,7 +118,7 @@ export default function CourtDuel({
         viewBox="0 0 500 434"
         className="w-full"
         role="img"
-        aria-label={`Shot-diet comparison by court zone. Largest gap: ${biggest[0]}, ${Math.abs(biggest[1]).toFixed(1)} percentage points toward ${biggest[1] >= 0 ? aName : bName}.`}
+        aria-label={`Shot-diet comparison by court zone. Largest gap: ${zoneName(biggest[0])}, ${Math.abs(biggest[1]).toFixed(1)} percentage points toward ${biggest[1] >= 0 ? aName : bName}.`}
         style={{
           opacity: revealed ? 1 : 0,
           transform: revealed ? "scale(1)" : "scale(0.98)",
@@ -125,8 +137,8 @@ export default function CourtDuel({
               fillRule={z.evenodd ? "evenodd" : "nonzero"}
             >
               <title>
-                {`${z.key}: ${
-                  Math.abs(d) < 1
+                {`${zoneName(z.key)}: ${
+                  Math.abs(d) < EVEN_PP
                     ? "about even"
                     : `${d >= 0 ? aLast : bLast} +${Math.abs(d).toFixed(1)} pp of his own attempts`
                 }`}
@@ -140,7 +152,7 @@ export default function CourtDuel({
         {ZONES.map((z) => {
           const d = deltas.get(z.key) ?? 0;
           const l = LABELS[z.key];
-          const even = Math.abs(d) < 1;
+          const even = Math.abs(d) < EVEN_PP;
           const transform = l.rotate
             ? `rotate(${l.x < 250 ? -90 : 90} ${l.x} ${l.y})`
             : undefined;
@@ -150,7 +162,7 @@ export default function CourtDuel({
                 x={l.x}
                 y={l.y}
                 textAnchor="middle"
-                fontSize={l.rotate ? 13.5 : 19}
+                fontSize={l.rotate ? 12 : 14}
                 fontWeight={650}
                 className="font-mono tnum"
                 fill={even ? "var(--color-ink-faint)" : divergingText(scaled(d))}
@@ -162,9 +174,9 @@ export default function CourtDuel({
               {l.caption && (
                 <text
                   x={l.x}
-                  y={l.y + 17}
+                  y={l.y + 15}
                   textAnchor="middle"
-                  fontSize={11.5}
+                  fontSize={10.5}
                   className="font-serif"
                   fill="var(--color-ink-soft)"
                 >
