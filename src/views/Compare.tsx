@@ -24,8 +24,8 @@ import { useTitle } from "../lib/useTitle";
 import { divergingColor, divergingText } from "../lib/color";
 import { int, lastName, ordinal, searchKey, signed } from "../lib/format";
 import SegmentedControl from "../components/SegmentedControl";
-import GapArc from "../components/charts/GapArc";
-import CourtZones from "../components/charts/CourtZones";
+import CompareForm from "../components/charts/CompareForm";
+import CourtDuel from "../components/charts/CourtDuel";
 import DefenseSpread from "../components/charts/DefenseSpread";
 
 type Lens = "value" | "making" | "fouls" | "defense";
@@ -185,14 +185,80 @@ function DuelRow({
   );
 }
 
-/** The per-player fact line under a duel block. */
-function FactPair({ lines }: { lines: [React.ReactNode, React.ReactNode] }) {
+/** One stat, both values. `win: "higher"` marks the larger value with a
+    chip, Sofascore-style; rows without it are context, not a contest. */
+interface StatRow {
+  label: string;
+  a: number | string | null;
+  b: number | string | null;
+  fmt?: (v: number) => string;
+  win?: "higher";
+  /** Diverging text color on the numbers (signed over/under metrics). */
+  color?: boolean;
+}
+
+function StatCell({
+  row,
+  side,
+}: {
+  row: StatRow;
+  side: "a" | "b";
+}) {
+  const v = row[side];
+  const other = row[side === "a" ? "b" : "a"];
+  if (v === null || v === undefined)
+    return <span className="font-mono text-sm text-ink-faint">–</span>;
+  if (typeof v === "string")
+    return <span className="font-mono tnum text-sm text-ink-soft">{v}</span>;
+  const text = (row.fmt ?? ((x: number) => signed(x, 1)))(v);
+  const wins =
+    row.win === "higher" && typeof other === "number" && v > other;
   return (
-    <div className="mt-4 grid grid-cols-2 gap-x-6 text-sm">
-      {lines.map((l, i) => (
-        <p key={i} className="font-mono tnum text-ink-soft">
-          {l}
-        </p>
+    <span
+      className={`font-mono tnum text-sm ${wins ? "rounded bg-wash px-1.5 py-0.5 font-semibold" : ""}`}
+      style={{ color: row.color ? divergingText(v) : undefined }}
+    >
+      {text}
+    </span>
+  );
+}
+
+/** The head-to-head numbers, one stat per row, values facing each other. */
+function StatDuelTable({
+  rows,
+  aName,
+  bName,
+}: {
+  rows: StatRow[];
+  aName: string;
+  bName: string;
+}) {
+  return (
+    <div className="mt-6">
+      <div className="grid grid-cols-[1fr_minmax(7.5rem,auto)_1fr] items-baseline gap-x-3 border-b border-line pb-2">
+        <span className="min-w-0 truncate text-center font-display text-[13px] font-semibold text-ink">
+          {aName}
+        </span>
+        <span />
+        <span className="min-w-0 truncate text-center font-display text-[13px] font-semibold text-ink">
+          {bName}
+        </span>
+      </div>
+      {rows.map((row) => (
+        <div
+          key={row.label}
+          className="grid grid-cols-[1fr_minmax(7.5rem,auto)_1fr] items-center gap-x-3 border-b border-line-soft py-2.5"
+        >
+          <span className="text-center">
+            <StatCell row={row} side="a" />
+          </span>
+          <span className="mx-auto max-w-[10rem] text-center font-display text-[11px] font-medium uppercase leading-tight tracking-wider text-ink-faint">
+            {row.label}
+          </span>
+          <span className="text-center">
+            <StatCell row={row} side="b" />
+          </span>
+        </div>
       ))}
     </div>
   );
@@ -205,6 +271,15 @@ const LENS_LABEL: Record<Lens, string> = {
   defense: "Defense",
 };
 
+const FORM_WINDOWS = ["5", "10", "15", "20"];
+
+/** The unit each lens's form line is measured in. */
+const FORM_UNIT: Record<Exclude<Lens, "defense">, string> = {
+  value: "points over expected",
+  making: "FG points over expected",
+  fouls: "FTAOE",
+};
+
 export default function Compare() {
   const data = useData();
   const { league } = useLeague();
@@ -212,6 +287,7 @@ export default function Compare() {
   const hasDefense = !!def.layers?.lineups;
   useTitle("Compare · Over Expected");
   const [params, setParams] = useSearchParams();
+  const [formWindow, setFormWindow] = useState("10");
 
   const aId = params.get("a") || null;
   const bId = params.get("b") || null;
@@ -311,19 +387,8 @@ export default function Compare() {
     }
     return gs;
   };
-
-  const headline = (
-    p: LeaderboardRow,
-    sv: ShotValueRow | undefined,
-    rapm: RapmRow | undefined,
-  ): number | null =>
-    lens === "value"
-      ? sv?.poe100 ?? null
-      : lens === "making"
-        ? sv?.fgPoe100 ?? null
-        : lens === "defense"
-          ? rapm?.dP ?? null
-          : p.per100;
+  const aGamesL = lensGames(aDetail, aSv);
+  const bGamesL = lensGames(bDetail, bSv);
 
   const update = (patch: Record<string, string>) => {
     const next = new URLSearchParams(params);
@@ -333,13 +398,6 @@ export default function Compare() {
 
   const aN = a ? lastName(a.name) : "A";
   const bN = b ? lastName(b.name) : "B";
-
-  const arcCopy: Record<Exclude<Lens, "defense">, string> = {
-    value:
-      "Cumulative points generated vs what an average shot diet would yield, game by game: field goals plus the free throws drawn.",
-    making: "Cumulative field-goal points vs what the looks were worth, game by game.",
-    fouls: `Cumulative ${def.sftaOnly ? "shooting-foul free throws" : "drawn free throws"} vs the league-average pace, game by game.`,
-  };
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-12 sm:px-8 sm:py-16">
@@ -475,21 +533,20 @@ export default function Compare() {
                   bVal={bSv?.ftaoe100 ?? null}
                 />
               </div>
-              <FactPair
-                lines={[aSv, bSv].map((sv, i) => {
-                  const p = i === 0 ? a : b;
-                  return sv ? (
-                    <>
-                      {sv.xptsShot.toFixed(2)}{" "}
-                      <span className="text-ink-faint">xPts/shot ·</span>{" "}
-                      {int(sv.fga)} <span className="text-ink-faint">FGA ·</span>{" "}
-                      {int(p.poss)} <span className="text-ink-faint">poss ·</span>{" "}
-                      {p.teams.join("/")}
-                    </>
-                  ) : (
-                    <>no shot-value row for {p.season}</>
-                  );
-                }) as [React.ReactNode, React.ReactNode]}
+              <StatDuelTable
+                aName={a.name}
+                bName={b.name}
+                rows={[
+                  { label: "Points over expected / 100", a: aSv?.poe100 ?? null, b: bSv?.poe100 ?? null, win: "higher", color: true },
+                  { label: "Shot-making, FG pts / 100", a: aSv?.fgPoe100 ?? null, b: bSv?.fgPoe100 ?? null, win: "higher", color: true },
+                  { label: "Foul-drawing / 100", a: aSv?.ftaoe100 ?? null, b: bSv?.ftaoe100 ?? null, win: "higher", color: true },
+                  { label: "Expected points per shot", a: aSv?.xptsShot ?? null, b: bSv?.xptsShot ?? null, fmt: (v) => v.toFixed(2), win: "higher" },
+                  { label: "FG%", a: aSv?.fgPct ?? null, b: bSv?.fgPct ?? null, fmt: (v) => v.toFixed(1) },
+                  { label: "Expected FG%", a: aSv?.xfgPct ?? null, b: bSv?.xfgPct ?? null, fmt: (v) => v.toFixed(1) },
+                  { label: "FG attempts", a: aSv?.fga ?? null, b: bSv?.fga ?? null, fmt: int },
+                  { label: "Possessions", a: a.poss, b: b.poss, fmt: int },
+                  { label: "Team", a: a.teams.join("/"), b: b.teams.join("/") },
+                ]}
               />
             </>
           )}
@@ -516,22 +573,18 @@ export default function Compare() {
                   bVal={bSv?.makeOE ?? null}
                 />
               </div>
-              <FactPair
-                lines={[aSv, bSv].map((sv, i) => {
-                  const p = i === 0 ? a : b;
-                  return sv ? (
-                    <>
-                      {sv.fgPct.toFixed(1)}{" "}
-                      <span className="text-ink-faint">FG% vs</span>{" "}
-                      {sv.xfgPct.toFixed(1)}{" "}
-                      <span className="text-ink-faint">expected ·</span>{" "}
-                      {int(sv.fga)} <span className="text-ink-faint">FGA ·</span>{" "}
-                      {p.teams.join("/")}
-                    </>
-                  ) : (
-                    <>no shot-value row for {p.season}</>
-                  );
-                }) as [React.ReactNode, React.ReactNode]}
+              <StatDuelTable
+                aName={a.name}
+                bName={b.name}
+                rows={[
+                  { label: "FG points over expected / 100", a: aSv?.fgPoe100 ?? null, b: bSv?.fgPoe100 ?? null, win: "higher", color: true },
+                  { label: "Make over expected, pp", a: aSv?.makeOE ?? null, b: bSv?.makeOE ?? null, win: "higher", color: true },
+                  { label: "FG%", a: aSv?.fgPct ?? null, b: bSv?.fgPct ?? null, fmt: (v) => v.toFixed(1) },
+                  { label: "Expected FG%", a: aSv?.xfgPct ?? null, b: bSv?.xfgPct ?? null, fmt: (v) => v.toFixed(1) },
+                  { label: "FG attempts", a: aSv?.fga ?? null, b: bSv?.fga ?? null, fmt: int },
+                  { label: "Possessions", a: a.poss, b: b.poss, fmt: int },
+                  { label: "Team", a: a.teams.join("/"), b: b.teams.join("/") },
+                ]}
               />
             </>
           )}
@@ -558,16 +611,18 @@ export default function Compare() {
                   bVal={b.sper100}
                 />
               </div>
-              <FactPair
-                lines={[a, b].map((p) => (
-                  <>
-                    {int(p.fta)} <span className="text-ink-faint">FTA vs</span>{" "}
-                    {p.xfta.toFixed(1)}{" "}
-                    <span className="text-ink-faint">expected ·</span>{" "}
-                    {int(p.poss)} <span className="text-ink-faint">poss ·</span>{" "}
-                    {p.teams.join("/")}
-                  </>
-                )) as [React.ReactNode, React.ReactNode]}
+              <StatDuelTable
+                aName={a.name}
+                bName={b.name}
+                rows={[
+                  { label: "FTAOE / 100", a: a.per100, b: b.per100, win: "higher", color: true },
+                  { label: "Style-adjusted / 100", a: a.sper100, b: b.sper100, win: "higher", color: true },
+                  { label: "Extra FTA vs league", a: a.ftaoe, b: b.ftaoe, win: "higher", color: true },
+                  { label: "FTA drawn", a: a.fta, b: b.fta, fmt: int },
+                  { label: "Expected FTA", a: a.xfta, b: b.xfta, fmt: (v) => v.toFixed(1) },
+                  { label: "Possessions", a: a.poss, b: b.poss, fmt: int },
+                  { label: "Team", a: a.teams.join("/"), b: b.teams.join("/") },
+                ]}
               />
             </>
           )}
@@ -617,31 +672,31 @@ export default function Compare() {
                     bVal={bRapm?.netP ?? null}
                   />
                 </div>
-                <FactPair
-                  lines={[aRapm, bRapm].map((r, i) => {
-                    const p = i === 0 ? a : b;
-                    if (!r) return <>no adjusted plus-minus for {p.season}</>;
-                    if (!aboveFloor(r))
-                      return (
-                        <>
-                          {int(r.possOff + r.possDef)}{" "}
-                          <span className="text-ink-faint">
-                            poss, below the {int(rapmFloor)} floor: shown, not
-                            ranked
-                          </span>
-                        </>
-                      );
-                    return (
-                      <>
-                        ± {r.seD.toFixed(1)}{" "}
-                        <span className="text-ink-faint">SE ·</span>{" "}
-                        {int(r.possDef)}{" "}
-                        <span className="text-ink-faint">def poss ·</span>{" "}
-                        {p.teams.join("/")}
-                      </>
-                    );
-                  }) as [React.ReactNode, React.ReactNode]}
+                <StatDuelTable
+                  aName={a.name}
+                  bName={b.name}
+                  rows={[
+                    { label: "Defensive RAPM / 100", a: aRapm?.dP ?? null, b: bRapm?.dP ?? null, win: "higher", color: true },
+                    { label: "Standard error", a: aRapm?.seD ?? null, b: bRapm?.seD ?? null, fmt: (v) => `± ${v.toFixed(1)}` },
+                    { label: "Offensive RAPM / 100", a: aRapm?.oP ?? null, b: bRapm?.oP ?? null, win: "higher", color: true },
+                    { label: "Net RAPM / 100", a: aRapm?.netP ?? null, b: bRapm?.netP ?? null, win: "higher", color: true },
+                    { label: "Defensive possessions", a: aRapm?.possDef ?? null, b: bRapm?.possDef ?? null, fmt: int },
+                    { label: "Team", a: a.teams.join("/"), b: b.teams.join("/") },
+                  ]}
                 />
+                {(!aboveFloor(aRapm) || !aboveFloor(bRapm)) && (
+                  <p className="mt-3 text-xs leading-relaxed text-ink-faint">
+                    {[
+                      { r: aRapm, p: a },
+                      { r: bRapm, p: b },
+                    ]
+                      .filter(({ r }) => r && !aboveFloor(r))
+                      .map(({ r, p }) =>
+                        `${lastName(p.name)} is below the layer's ${int(rapmFloor)}-possession floor (${int(r!.possOff + r!.possDef)} poss): his numbers are shown, not ranked.`,
+                      )
+                      .join(" ")}
+                  </p>
+                )}
 
                 {sameSeason && aboveFloor(aRapm) && aboveFloor(bRapm) ? (
                   <section className="mt-10">
@@ -681,92 +736,74 @@ export default function Compare() {
               </>
             ))}
 
-          {/* the season, drawn as a gap — one arc per player, in the lens's unit */}
+          {/* form, both players on one axis — the totals live in the table
+              above; what they cannot show is WHEN each player was good */}
           {lens !== "defense" && (
-            <div className="mt-10 space-y-8">
-              <p className="max-w-prose text-sm text-ink-soft">
-                {arcCopy[lens]}
-              </p>
-              {(
-                [
-                  { row: a, sv: aSv, detail: aDetail, chunk: aChunk },
-                  { row: b, sv: bSv, detail: bDetail, chunk: bChunk },
-                ] as const
-              ).map(({ row, sv, detail, chunk }) => {
-                const games = lensGames(detail, sv);
-                const metric = headline(row, sv, undefined);
-                return (
-                  <div key={row.id}>
-                    <p className="font-display text-sm font-semibold text-ink">
-                      {row.name}{" "}
-                      {metric !== null && (
-                        <span
-                          className="font-mono tnum font-normal"
-                          style={{ color: divergingText(metric) }}
-                        >
-                          {signed(metric, 1)}
-                        </span>
-                      )}
-                      <span className="font-mono text-xs text-ink-faint">
-                        {" "}
-                        · {row.season}
-                      </span>
-                    </p>
-                    {games ? (
-                      <GapArc games={games} height={190} className="mt-2" />
-                    ) : chunk.status === "error" ? (
-                      <p className="mt-2 rounded border border-line-soft bg-wash px-4 py-6 text-center text-sm text-ink-faint">
-                        The per-game series failed to load.
-                      </p>
-                    ) : (
-                      <div className="mt-2 h-[190px] animate-pulse rounded bg-wash" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <section className="mt-12">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+                    Form, on one axis
+                  </h2>
+                  <p className="mt-1.5 max-w-prose text-sm text-ink-soft">
+                    Trailing {formWindow}-game {FORM_UNIT[lens]} per 100
+                    possessions, both players against the same league pace:
+                    streaks, slumps, and who was trending where.
+                    {!sameSeason && " Each line runs over its own season."}
+                  </p>
+                </div>
+                <SegmentedControl
+                  ariaLabel="Window size in games"
+                  options={FORM_WINDOWS.map((w) => ({ value: w, label: `${w} gm` }))}
+                  value={formWindow}
+                  onChange={setFormWindow}
+                />
+              </div>
+              {aGamesL && bGamesL ? (
+                <CompareForm
+                  aName={a.name}
+                  bName={b.name}
+                  aGames={aGamesL}
+                  bGames={bGamesL}
+                  window={Number(formWindow)}
+                  className="mt-6"
+                />
+              ) : aChunk.status === "error" || bChunk.status === "error" ? (
+                <p className="mt-6 rounded border border-line-soft bg-wash px-4 py-6 text-center text-sm text-ink-faint">
+                  The per-game series failed to load.
+                </p>
+              ) : (
+                <div className="mt-6 h-[240px] animate-pulse rounded bg-wash" aria-busy="true" />
+              )}
+            </section>
           )}
 
-          {/* where it happens, side by side */}
+          {/* where it happens: one court, the shot diets subtracted */}
           {lens !== "defense" && (
             <section className="mt-12">
               <h2 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
                 Where it happens
               </h2>
               <p className="mt-1.5 max-w-prose text-sm text-ink-soft">
-                Field-goal attempts by zone: the shot diet behind each player's
-                numbers.
+                The two shot diets, subtracted: each zone leans toward the
+                player who takes a larger share of his own attempts there, and
+                zones they use equally stay pale.
               </p>
-              <div className="mt-6 grid gap-x-8 gap-y-8 sm:grid-cols-2">
-                {(
-                  [
-                    { row: a, detail: aDetail },
-                    { row: b, detail: bDetail },
-                  ] as const
-                ).map(({ row, detail }) => (
-                  <div key={row.id}>
-                    <p className="font-display text-sm font-semibold text-ink">
-                      {row.name}
-                      <span className="font-mono text-xs font-normal text-ink-faint">
-                        {" "}
-                        · {row.season}
-                      </span>
-                    </p>
-                    {detail ? (
-                      <CourtZones
-                        court={def.court}
-                        zones={detail.zones}
-                        className="mt-3"
-                      />
-                    ) : (
-                      <div
-                        className="mt-3 aspect-[500/434] animate-pulse rounded bg-wash"
-                        aria-busy="true"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
+              {aDetail && bDetail ? (
+                <CourtDuel
+                  court={def.court}
+                  aName={a.name}
+                  bName={b.name}
+                  aZones={aDetail.zones}
+                  bZones={bDetail.zones}
+                  className="mt-6 max-w-[560px]"
+                />
+              ) : (
+                <div
+                  className="mt-6 aspect-[500/434] max-w-[560px] animate-pulse rounded bg-wash"
+                  aria-busy="true"
+                />
+              )}
             </section>
           )}
         </>

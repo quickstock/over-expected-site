@@ -22,7 +22,7 @@ type LabelMap = Record<
   string,
   { x: number; y: number; caption?: string; rotate?: boolean }
 >;
-interface Geometry {
+export interface Geometry {
   breakY: number;
   zones: Zone[];
   labels: LabelMap;
@@ -118,7 +118,7 @@ const FIBA: Geometry = {
   ),
 };
 
-const GEOMETRY: Record<CourtKind, Geometry> = { nba: NBA, fiba: FIBA };
+export const GEOMETRY: Record<CourtKind, Geometry> = { nba: NBA, fiba: FIBA };
 
 interface Props {
   zones: ZoneAgg[];
