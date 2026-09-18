@@ -1054,15 +1054,16 @@ shell({
       url: `${BASE}/data`,
       license: LICENSE,
       creator: { "@id": ORG["@id"] },
-      dataset: LEAGUES.map((lg) => ({
-        "@type": "Dataset",
-        name: `${LEAGUE_LABEL[lg]} shot value`,
-        license: LICENSE,
-        temporalCoverage: coverage(dataByLeague[lg].meta.seasons),
-        distribution: [{ "@type": "DataDownload",
-                         encodingFormat: "application/json",
-                         contentUrl: `${BASE}/data-${lg}.json` }],
-      })),
+      dataset: LEAGUES.map((lg) =>
+        dataset({
+          name: `${LEAGUE_LABEL[lg]} shot value`,
+          description:
+            `${LEAGUE_LABEL[lg]} player-season shot value, shot-making and ` +
+            `drawn free throws, measured over ${coverage(dataByLeague[lg].meta.seasons)}.`,
+          lg,
+          variables: VARIABLES.value,
+        }),
+      ),
     },
     faq("Can I download the Over Expected data?",
         "Yes. Every number ships as static JSON, one file per league plus one " +
