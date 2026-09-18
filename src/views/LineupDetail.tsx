@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useLeague, useLineupChunk, useRapm } from "../data";
+import { useLineupChunk, useRapm } from "../data";
 import { ACTIVE_LEAGUES, leagueDef, type League } from "../leagues";
 import type { LineupRow } from "../types";
 import { divergingColor, divergingText } from "../lib/color";
@@ -76,10 +76,6 @@ export default function LineupDetail() {
   const { lg, lineupId } = useParams();
   const league = (lg && ACTIVE_LEAGUES.includes(lg as League) ? lg : ACTIVE_LEAGUES[0]) as League;
   const def = leagueDef(league);
-  const { league: active, setLeague } = useLeague();
-  useEffect(() => {
-    if (league !== active) setLeague(league);
-  }, [league, active, setLeague]);
 
   const [params] = useSearchParams();
   const state = useRapm(league);

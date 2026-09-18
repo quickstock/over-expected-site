@@ -1,8 +1,21 @@
 {
+  "redirects": [
+    { "source": "/leaderboard", "destination": "/leaderboard/NBA/shot-value", "statusCode": 301 },
+    { "source": "/league", "destination": "/league/NBA/shot-value", "statusCode": 301 },
+    { "source": "/referees", "destination": "/referees/NBA", "statusCode": 301 },
+    { "source": "/shot-value", "destination": "/leaderboard/NBA/shot-value", "statusCode": 301 },
+    { "source": "/coaching", "destination": "/league/NBA/shot-value", "statusCode": 301 },
+    { "source": "/coaching/:lg", "destination": "/league/NBA/shot-value", "statusCode": 301 },
+    { "source": "/defense", "destination": "/league/NBA/quality-forced", "statusCode": 301 },
+    { "source": "/defense/:lg", "destination": "/league/NBA/quality-forced", "statusCode": 301 },
+    { "source": "/lineups", "destination": "/lineups/NBA", "statusCode": 301 },
+    { "source": "/value", "destination": "/value/NBA", "statusCode": 301 },
+    { "source": "/calibration", "destination": "/calibration/NBA", "statusCode": 301 }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/spa-fallback.html"
     }
   ],
   "buildCommand": "npm run build && node --expose-gc scripts/generate-static.mjs --base https://overexpected.com",
@@ -12,7 +25,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self' https://formsubmit.co; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.nba.com https://cdn.wnba.com https://media-cdn.incrowdsports.com https://media-cdn.cortextech.io https://static.acb.com https://lba-media.s3.eu-south-1.amazonaws.com https://www.aba-liga.com https://images.statsengine.playbyplay.api.geniussports.com https://img.wh.sportingpulseinternational.com; font-src 'self'; connect-src 'self'; form-action 'self' https://formsubmit.co; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
         },
         {
           "key": "Strict-Transport-Security",

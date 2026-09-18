@@ -61,7 +61,12 @@ function PctCell({ pct }: { pct: number | null }) {
   );
 }
 
-export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNode }) {
+export default function FoulDrawingBoard({ lensControl, season, onSeason }: {
+  lensControl: ReactNode;
+  /** Resolved from the path by the route, not from a query param. */
+  season: string;
+  onSeason: (season: string) => void;
+}) {
   const data = useData();
   const { league } = useLeague();
   const board = leagueDef(league);
@@ -69,12 +74,7 @@ export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNo
   const [, startTransition] = useTransition();
 
   const seasons = data.meta.seasons;
-  const latest = data.meta.defaultSeason;
   const qualify = data.meta.qualifyPossessions;
-
-  const season = seasons.includes(params.get("season") ?? "")
-    ? (params.get("season") as string)
-    : latest;
   // Explicit sort = the user clicked a column; null = the board's own
   // headline order (FTAOE/100 desc), which renders with no indicator.
   const explicit = ["per100", "poss", "pct"].includes(params.get("sort") ?? "")
@@ -151,7 +151,7 @@ export default function FoulDrawingBoard({ lensControl }: { lensControl: ReactNo
               shortLabel: `'${s.slice(2, 4)}-${s.slice(5)}`,
             }))}
             value={season}
-            onChange={(s) => update({ season: s })}
+            onChange={onSeason}
           />
           {hasPositions && (
             <SegmentedControl

@@ -1,0 +1,619 @@
+{
+ "generated": "2026-08-19",
+ "terms": [
+  {
+   "slug": "points-over-expected",
+   "name": "Points over expected per 100 possessions",
+   "abbr": "POE/100",
+   "unit": "points per 100 possessions",
+   "scope": "player",
+   "definition": "What a player adds beyond what his shots were worth. It combines the field-goal points he produces above the difficulty of the looks he took with the value of the free throws he draws above the rate those same situations usually produce.",
+   "formula": "POE/100 = FG points over expected /100 + (league FT% x drawn FTs over expected /100)",
+   "formulaNote": "Verified against the shipped exports: the ratio of (poe100 - fgPoe100) to ftaoe100 has a median of 0.776 against a stated league FT% of 0.77.",
+   "rangeOf": {
+    "min": -30.6,
+    "p10": -12.2,
+    "median": -0.6,
+    "p90": 11.5,
+    "max": 28.3,
+    "n": 1690
+   },
+   "howToRead": "Zero is the league. Positive means a player produced more than his shot diet and his contact were worth; negative means less. It is a rate, so a low-possession player can post an extreme figure on very little evidence.",
+   "misses": "It does not separate playstyle from skill from officiating, it carries no defensive information, and it is not evidence of referee bias.",
+   "related": [
+    "shot-making-over-expected",
+    "free-throws-over-expected",
+    "expected-points-per-shot"
+   ]
+  },
+  {
+   "slug": "expected-points-per-shot",
+   "name": "Expected points per shot",
+   "abbr": "xPts/shot",
+   "unit": "points per field-goal attempt",
+   "scope": "player",
+   "definition": "What the average attempt from this player's shot diet is worth, before anyone makes or misses it. It prices each shot by location and context and averages over every attempt he took.",
+   "formula": null,
+   "rangeOf": {
+    "min": 1.06,
+    "p10": 1.16,
+    "median": 1.23,
+    "p90": 1.35,
+    "max": 1.74,
+    "n": 1690
+   },
+   "howToRead": "Higher means an easier or better-selected shot diet, not better shooting. A rim-heavy big will sit high and a long-two shooter low, regardless of how well either shoots.",
+   "misses": "It says nothing about whether the shots went in, and it cannot see how open the shooter was.",
+   "related": [
+    "expected-field-goal-percentage",
+    "shot-making-over-expected"
+   ]
+  },
+  {
+   "slug": "expected-field-goal-percentage",
+   "name": "Expected field goal percentage",
+   "abbr": "xFG%",
+   "unit": "percent",
+   "scope": "player",
+   "definition": "The field goal percentage the model expects from this player's shot diet, given where and in what context the attempts came from.",
+   "formula": null,
+   "rangeOf": {
+    "min": 36.7,
+    "p10": 41.3,
+    "median": 45.8,
+    "p90": 55.7,
+    "max": 77.6,
+    "n": 1690
+   },
+   "howToRead": "Compare it to actual FG%. The gap between the two is shot-making over expected.",
+   "misses": "Openness is not an input, so a player who is consistently unguarded will beat his expectation for reasons the number attributes to him.",
+   "related": [
+    "shot-making-over-expected",
+    "expected-points-per-shot"
+   ]
+  },
+  {
+   "slug": "shot-making-over-expected",
+   "name": "Shot-making over expected",
+   "abbr": "Make OE",
+   "unit": "percentage points of field goal percentage",
+   "scope": "player",
+   "definition": "How much better or worse a player converted than his looks were worth. It is his field goal percentage minus the percentage the model expected from the same shots.",
+   "formula": "Make OE = FG% - xFG%",
+   "formulaNote": "Verified: the identity holds across every shipped row to within rounding.",
+   "rangeOf": {
+    "min": -14.6,
+    "p10": -4.8,
+    "median": 0.1,
+    "p90": 4.4,
+    "max": 13.6,
+    "n": 1690
+   },
+   "howToRead": "Shot quality is already priced out, so this is shooting alone. Positive means he beat his own shot diet.",
+   "misses": "Small samples swing it hard, and it cannot tell a hot streak from a durable skill.",
+   "related": [
+    "expected-field-goal-percentage",
+    "fg-points-over-expected"
+   ]
+  },
+  {
+   "slug": "fg-points-over-expected",
+   "name": "Field-goal points over expected per 100",
+   "abbr": "FG POE/100",
+   "unit": "points per 100 possessions",
+   "scope": "player",
+   "definition": "The shot-making half of points over expected, converted from percentage points into points per 100 possessions so it can be added to the free-throw half.",
+   "formula": null,
+   "rangeOf": {
+    "min": -29.9,
+    "p10": -10.1,
+    "median": 0.1,
+    "p90": 9.8,
+    "max": 26.3,
+    "n": 1690
+   },
+   "howToRead": "It scales shot-making by how often a player shoots. A high Make OE on few attempts lands low here.",
+   "misses": "Free throws are excluded by construction; they are the other half of points over expected.",
+   "related": [
+    "shot-making-over-expected",
+    "points-over-expected"
+   ]
+  },
+  {
+   "slug": "free-throws-over-expected",
+   "name": "Free throws drawn over expected per 100",
+   "abbr": "FTAOE/100",
+   "unit": "free-throw attempts per 100 possessions",
+   "scope": "player",
+   "definition": "How many more or fewer free throws a player draws than the model expects from the same contexts, per 100 possessions, measured against that season's own league rate rather than a flat average.",
+   "formula": "FTAOE/100 = (drawn FTA - expected FTA) / possessions x 100",
+   "formulaNote": "Verified: the shipped ftaoe equals fta minus xfta exactly, and ftaoe100 matches the leaderboard's per100 to within rounding.",
+   "rangeOf": {
+    "min": -18.1,
+    "p10": -9.9,
+    "median": -0.7,
+    "p90": 9.2,
+    "max": 27.4,
+    "n": 1691
+   },
+   "howToRead": "The original metric this site was built on. Positive means a player gets to the line more than his situations usually produce. In the NBA build this counts shooting-foul free throws only; the European builds count all drawn free throws.",
+   "misses": "It blends playstyle, contact-seeking skill and officiating without separating them, and it is not evidence of bias.",
+   "related": [
+    "expected-free-throws",
+    "points-over-expected",
+    "percentile"
+   ]
+  },
+  {
+   "slug": "expected-free-throws",
+   "name": "Expected free throws attempted",
+   "abbr": "xFTA",
+   "unit": "free-throw attempts",
+   "scope": "player",
+   "definition": "The number of free throws the model expects a player to draw given the shots he took and the contexts he took them in.",
+   "formula": null,
+   "rangeOf": {
+    "min": 52.5,
+    "p10": 64.6,
+    "median": 113.5,
+    "p90": 224.7,
+    "max": 345.5,
+    "n": 1691
+   },
+   "howToRead": "Read it next to actual attempts. The difference is the whole point of the metric.",
+   "misses": "It is a rate model, not a referee model; it does not know which official worked the game.",
+   "related": [
+    "free-throws-over-expected"
+   ]
+  },
+  {
+   "slug": "percentile",
+   "name": "Percentile",
+   "abbr": null,
+   "unit": "percentile, 0 to 100",
+   "scope": "player",
+   "definition": "Where a player sits among every qualified player in the same season and the same league.",
+   "formula": null,
+   "rangeOf": null,
+   "howToRead": "Always relative to a season's own pool, never across leagues or eras. It is withheld below a league's possession floor, because a percentile computed on too little data reads as precision that is not there.",
+   "misses": "A percentile hides how much of the field a player's uncertainty still covers. On defence the site shows that interval explicitly for exactly this reason.",
+   "related": [
+    "free-throws-over-expected",
+    "possession-floor"
+   ]
+  },
+  {
+   "slug": "possession-floor",
+   "name": "Qualifying possessions",
+   "abbr": null,
+   "unit": "possessions",
+   "scope": "player",
+   "definition": "The minimum possessions a player needs in a season before the site will publish a rate for him.",
+   "formula": null,
+   "rangeOf": {
+    "note": "NBA 300, set per league in the registry"
+   },
+   "howToRead": "Below the floor a rate is arithmetic, not evidence. Percentiles are withheld rather than shown with a caveat.",
+   "misses": "A floor is a blunt instrument; a player just above it is barely better evidenced than one just below.",
+   "related": [
+    "percentile"
+   ]
+  },
+  {
+   "slug": "team-shot-value",
+   "name": "Team shot value per 100",
+   "abbr": "SV/100",
+   "unit": "points per 100 possessions",
+   "scope": "team",
+   "definition": "How good the looks a team generates are, before anyone makes or misses them: expected points per 100 possessions of the shots taken, against the season's league mean.",
+   "formula": null,
+   "rangeOf": {
+    "min": -8.3,
+    "p10": -3.2,
+    "median": -0.1,
+    "p90": 3.5,
+    "max": 6.7,
+    "n": 180
+   },
+   "howToRead": "Positive means better shots, not better shooting. It is the team layer under a player's own shot value.",
+   "misses": "It cannot attribute a team's shot quality to the players, the system or the coach.",
+   "related": [
+    "team-shot-making",
+    "points-over-expected"
+   ]
+  },
+  {
+   "slug": "team-shot-making",
+   "name": "Team shot-making per 100",
+   "abbr": "Make/100",
+   "unit": "points per 100 possessions",
+   "scope": "team",
+   "definition": "Whether a team converted better or worse than its looks were worth: field-goal points over expected per 100 possessions, against the season's league mean.",
+   "formula": null,
+   "rangeOf": {
+    "min": -8.6,
+    "p10": -4.7,
+    "median": 0.1,
+    "p90": 4.4,
+    "max": 6.9,
+    "n": 180
+   },
+   "howToRead": "Shot quality is priced out, so this is team shooting alone.",
+   "misses": "Shooting variance over one season is large; a single year is weak evidence of a durable ability.",
+   "related": [
+    "team-shot-value",
+    "shot-making-over-expected"
+   ]
+  },
+  {
+   "slug": "free-throws-drawn-team",
+   "name": "Free throws drawn, team",
+   "abbr": null,
+   "unit": "free throws per 100 possessions vs expectation",
+   "scope": "team",
+   "definition": "Free throws a team draws over the model's expectation for the same contexts, per 100 possessions.",
+   "formula": null,
+   "rangeOf": {
+    "min": -3.8,
+    "p10": -1.8,
+    "median": 0.1,
+    "p90": 1.6,
+    "max": 3.7,
+    "n": 180
+   },
+   "howToRead": "A player's foul-drawing figure partly rides on his team's. Check this before crediting him alone.",
+   "misses": "It does not separate a team's style from the officiating its games happen to get.",
+   "related": [
+    "free-throws-conceded-team",
+    "free-throws-over-expected"
+   ]
+  },
+  {
+   "slug": "free-throws-conceded-team",
+   "name": "Free throws conceded, team",
+   "abbr": null,
+   "unit": "free throws per 100 possessions vs expectation",
+   "scope": "team",
+   "definition": "Free throws a team's defence gives up over the model's expectation for the same contexts, per 100 possessions.",
+   "formula": null,
+   "rangeOf": {
+    "min": -1.2,
+    "p10": -0.5,
+    "median": 0.0,
+    "p90": 0.5,
+    "max": 1.2,
+    "n": 180
+   },
+   "howToRead": "Lower is better here. It is the defensive mirror of drawn free throws.",
+   "misses": "Fouling is partly a deliberate trade for a worse shot; this number cannot see the intent.",
+   "related": [
+    "free-throws-drawn-team"
+   ]
+  },
+  {
+   "slug": "offensive-rapm",
+   "name": "Offensive RAPM",
+   "abbr": "O-RAPM",
+   "unit": "points per 100 possessions",
+   "scope": "player",
+   "definition": "A player's offensive impact per 100 possessions, estimated from on-court stints with teammates and opponents held fixed, regularized so thin samples are pulled toward a box-score prior rather than toward zero.",
+   "formula": null,
+   "rangeOf": {
+    "min": -4.31,
+    "p10": -1.48,
+    "median": -0.03,
+    "p90": 1.78,
+    "max": 6.56,
+    "n": 3400
+   },
+   "howToRead": "The shipped figure is the prior-informed one. The plain ridge estimate is shown alongside it on a player page so a number carried by the prior is visible as such.",
+   "misses": "It cannot separate a player from the lineups he happened to play in, and a season is rarely enough data to be confident.",
+   "related": [
+    "defensive-rapm",
+    "net-rapm",
+    "rapm-standard-error"
+   ]
+  },
+  {
+   "slug": "defensive-rapm",
+   "name": "Defensive RAPM",
+   "abbr": "D-RAPM",
+   "unit": "points per 100 possessions",
+   "scope": "player",
+   "definition": "A player's defensive impact per 100 possessions from the same fit, signed so positive is good: points his presence prevents.",
+   "formula": null,
+   "rangeOf": {
+    "min": -3.8,
+    "p10": -1.36,
+    "median": 0.0,
+    "p90": 1.35,
+    "max": 5.18,
+    "n": 3400
+   },
+   "howToRead": "This is the only defensive measure the site puts under a player's name. The shot-level player version was built and rejected on evidence.",
+   "misses": "Defence is shared five ways and the data cannot cleanly attribute it. The interval is wide and the site draws it.",
+   "related": [
+    "offensive-rapm",
+    "net-rapm",
+    "quality-forced"
+   ]
+  },
+  {
+   "slug": "net-rapm",
+   "name": "Net RAPM",
+   "abbr": null,
+   "unit": "points per 100 possessions",
+   "scope": "player",
+   "definition": "Offensive plus defensive RAPM: total estimated impact per 100 possessions.",
+   "formula": "Net RAPM = O-RAPM + D-RAPM",
+   "formulaNote": "Verified: the identity holds across all 3,400 shipped player-seasons to within rounding.",
+   "rangeOf": {
+    "min": -5.43,
+    "p10": -2.04,
+    "median": -0.01,
+    "p90": 2.37,
+    "max": 8.8,
+    "n": 3400
+   },
+   "howToRead": "Its interval accounts for the fact that the offensive and defensive halves come from the same fit and are not independent.",
+   "misses": "Everything O-RAPM and D-RAPM miss, plus the fact that the penalty is plugged in from cross-validation rather than modelled with its own uncertainty.",
+   "related": [
+    "offensive-rapm",
+    "defensive-rapm",
+    "rapm-standard-error"
+   ]
+  },
+  {
+   "slug": "rapm-standard-error",
+   "name": "RAPM standard error",
+   "abbr": "SE",
+   "unit": "points per 100 possessions",
+   "scope": "player",
+   "definition": "How much the RAPM estimate would be expected to move on different data of the same size. The site ships one for offence, one for defence and one for the net.",
+   "formula": null,
+   "rangeOf": {
+    "min": 0.03,
+    "p10": 0.27,
+    "median": 0.65,
+    "p90": 0.71,
+    "max": 0.76,
+    "n": 3400
+   },
+   "howToRead": "Read it next to the estimate. Where the error is large relative to the number, the number is a weak signal and should not be ranked on.",
+   "misses": "It is an approximate sandwich interval, not a posterior.",
+   "related": [
+    "net-rapm",
+    "offensive-rapm"
+   ]
+  },
+  {
+   "slug": "lineup-net-100",
+   "name": "Lineup net points per 100",
+   "abbr": "Net/100",
+   "unit": "points per 100 possessions",
+   "scope": "lineup",
+   "definition": "What a five-man lineup actually produced per 100 possessions while it was on the floor together.",
+   "formula": null,
+   "rangeOf": {
+    "min": -47.7,
+    "p10": -18.8,
+    "median": -3.5,
+    "p90": 25.3,
+    "max": 45.5,
+    "n": 360
+   },
+   "howToRead": "Raw, unadjusted, and over small samples. Compare it to what the same five were expected to produce.",
+   "misses": "Opponent quality and context are not adjusted for at the lineup level.",
+   "related": [
+    "lineup-expected-100",
+    "lineup-synergy"
+   ]
+  },
+  {
+   "slug": "lineup-expected-100",
+   "name": "Lineup expected points per 100",
+   "abbr": "Exp/100",
+   "unit": "points per 100 possessions",
+   "scope": "lineup",
+   "definition": "What a five-man lineup was expected to produce from the sum of its five players' individual impacts.",
+   "formula": null,
+   "rangeOf": {
+    "min": -15.1,
+    "p10": -4.3,
+    "median": 4.2,
+    "p90": 10.8,
+    "max": 17.7,
+    "n": 360
+   },
+   "howToRead": "The baseline the actual result is measured against.",
+   "misses": "It assumes impacts add, which is the assumption synergy exists to test.",
+   "related": [
+    "lineup-net-100",
+    "lineup-synergy"
+   ]
+  },
+  {
+   "slug": "lineup-synergy",
+   "name": "Lineup synergy per 100",
+   "abbr": null,
+   "unit": "points per 100 possessions",
+   "scope": "lineup",
+   "definition": "The gap between what a five-man lineup produced and what the sum of its parts predicted.",
+   "formula": "Synergy = Net/100 - Expected/100",
+   "rangeOf": {
+    "min": -47.3,
+    "p10": -19.0,
+    "median": -9.2,
+    "p90": 17.8,
+    "max": 42.5,
+    "n": 360
+   },
+   "howToRead": "Description, not forecast. The site's own out-of-sample test found synergy does not persist between seasons, and both the board and the methodology say so.",
+   "misses": "It does not predict anything. Treating a high synergy figure as a reason to keep a lineup together is not supported by the measurement.",
+   "related": [
+    "lineup-net-100",
+    "lineup-expected-100"
+   ]
+  },
+  {
+   "slug": "wins-over-replacement",
+   "name": "Wins over replacement",
+   "abbr": "WAR",
+   "unit": "wins",
+   "scope": "player",
+   "definition": "How many wins a player produced above a replacement-level player, from his adjusted impact, his share of his team's floor time, and the length of the season.",
+   "formula": null,
+   "rangeOf": {
+    "min": -5.4,
+    "p10": -0.01,
+    "median": 0.72,
+    "p90": 5.22,
+    "max": 19.25,
+    "n": 3400
+   },
+   "howToRead": "Built on adjusted plus-minus rather than a box-score estimate of it, which is the difference from the public VORP figures.",
+   "misses": "Contract surplus is absent, not estimated: no free per-player salary source exists, so the money half of the question is unanswered.",
+   "related": [
+    "net-rapm",
+    "vorp"
+   ]
+  },
+  {
+   "slug": "vorp",
+   "name": "Value over replacement",
+   "abbr": "VORP",
+   "unit": "points per 100 team possessions",
+   "scope": "player",
+   "definition": "A player's impact expressed against replacement level rather than against average, before it is converted into wins.",
+   "formula": null,
+   "rangeOf": {
+    "min": -2.0,
+    "p10": -0.01,
+    "median": 0.27,
+    "p90": 1.93,
+    "max": 7.13,
+    "n": 3400
+   },
+   "howToRead": "The intermediate step between net RAPM and wins over replacement.",
+   "misses": "Replacement level is a convention, not a measurement.",
+   "related": [
+    "wins-over-replacement",
+    "net-rapm"
+   ]
+  },
+  {
+   "slug": "quality-forced",
+   "name": "Shot quality forced",
+   "abbr": null,
+   "unit": "expected points per shot vs league",
+   "scope": "team",
+   "definition": "How good the shots a defence allows are, priced by the same model that prices offence: expected points per shot faced, against the league.",
+   "formula": null,
+   "rangeOf": {
+    "min": -0.042,
+    "p10": -0.025,
+    "median": -0.001,
+    "p90": 0.029,
+    "max": 0.063,
+    "n": 180
+   },
+   "howToRead": "Negative is better: the defence forced worse shots than the league average. Split-half reliability 0.981 over 180 team-seasons, the most reliable of the three pillars.",
+   "misses": "Team-level on purpose. The player version was built and rejected at 0.348 split-half, because splitting each shot five ways is team defence wearing a player's name.",
+   "related": [
+    "rim-deterrence",
+    "conversion-suppression",
+    "defensive-rapm"
+   ]
+  },
+  {
+   "slug": "rim-deterrence",
+   "name": "Rim deterrence",
+   "abbr": null,
+   "unit": "share of shots faced at the rim",
+   "scope": "team",
+   "definition": "How much of the shot diet a defence faces comes at the rim, relative to the league.",
+   "formula": null,
+   "rangeOf": {
+    "min": 21.0,
+    "p10": 25.27,
+    "median": 29.625,
+    "p90": 32.58,
+    "max": 36.44,
+    "n": 180
+   },
+   "howToRead": "Split-half reliability 0.964. Read it as where a defence sends shots, not how well it contests them.",
+   "misses": "Keeping shots off the rim can be bought with open threes; this pillar alone does not price that trade.",
+   "related": [
+    "quality-forced",
+    "conversion-suppression"
+   ]
+  },
+  {
+   "slug": "conversion-suppression",
+   "name": "Conversion suppression",
+   "abbr": null,
+   "unit": "points per shot below expectation",
+   "scope": "team",
+   "definition": "Whether shots taken against a defence went in less often than their quality implied.",
+   "formula": null,
+   "rangeOf": {
+    "min": -7.96,
+    "p10": -2.96,
+    "median": -0.02,
+    "p90": 3.19,
+    "max": 6.59,
+    "n": 180
+   },
+   "howToRead": "Split-half reliability 0.717, the noisiest of the three pillars. The site orders the pillars by measured reliability with each figure attached, so this one cannot be mistaken for the solid one.",
+   "misses": "Most of what looks like suppression over one season is shooting variance by the opponent.",
+   "related": [
+    "quality-forced",
+    "rim-deterrence"
+   ]
+  },
+  {
+   "slug": "points-allowed-100",
+   "name": "Points allowed per 100",
+   "abbr": null,
+   "unit": "points per 100 defensive possessions",
+   "scope": "team",
+   "definition": "What a defence actually conceded per 100 possessions, unadjusted.",
+   "formula": null,
+   "rangeOf": {
+    "min": 89.3,
+    "p10": 93.5,
+    "median": 97.2,
+    "p90": 101.2,
+    "max": 104.8,
+    "n": 180
+   },
+   "howToRead": "Context for the three pillars, not a pillar itself: it mixes shot quality, opponent shooting and pace.",
+   "misses": "It does not separate defence from the opponents it happened to face.",
+   "related": [
+    "quality-forced"
+   ]
+  },
+  {
+   "slug": "decision-expected-value",
+   "name": "Decision expected-value lost",
+   "abbr": "ETM",
+   "unit": "points of win probability",
+   "scope": "team",
+   "definition": "How much win probability a team gave up by taking the worse of the two end-game options, scored on expectation at the moment of the decision.",
+   "formula": null,
+   "rangeOf": {
+    "min": 0.97,
+    "p10": 1.66,
+    "median": 2.34,
+    "p90": 3.19,
+    "max": 3.23,
+    "n": 30
+   },
+   "howToRead": "It cannot go below zero by construction, so 'distinguishably worse than optimal' is true of every team and means nothing. The site ships overlap tiers instead, and the league resolves into two.",
+   "misses": "The outcome is never an input: a test re-scores every decision with the result flipped and asserts identical answers. It therefore says nothing about whether a given shot went in.",
+   "related": [
+    "points-over-expected"
+   ]
+  }
+ ]
+}

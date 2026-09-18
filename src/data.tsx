@@ -1,12 +1,15 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import type {
+  HeadshotMap,
   LineupChunk,
   PlayerSeasonChunk,
   RapmData,
@@ -21,6 +24,7 @@ import {
   DEFAULT_LEAGUE,
   type League,
 } from "./leagues";
+import { leagueFromPath, leagueSwitchTarget } from "./routes";
 import { setLeagueTheme } from "./lib/color";
 
 export const LEAGUES: League[] = ACTIVE_LEAGUES;
@@ -35,20 +39,37 @@ const DataContext = createContext<DataStore | null>(null);
 
 const LS_KEY = "oe-league";
 
-function initialLeague(): League {
-  const saved = localStorage.getItem(LS_KEY) as League | null;
-  return saved && ACTIVE_LEAGUES.includes(saved) ? saved : DEFAULT_LEAGUE;
-}
-
 export function DataProvider({ children }: { children: ReactNode }) {
   const [all, setAll] = useState<Partial<Record<League, SiteData>>>({});
   const [failed, setFailed] = useState<Partial<Record<League, true>>>({});
-  const [league, setLeagueState] = useState<League>(initialLeague);
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
 
-  const setLeague = (lg: League) => {
-    setLeagueState(lg);
-    localStorage.setItem(LS_KEY, lg);
-  };
+  // The URL decides the league wherever it names one. `remembered` covers only
+  // the routes that don't (/, /methodology, /compare, /data, /crackdown,
+  // /feedback), and it is adopted in an effect rather than read during render:
+  // localStorage does not exist server-side, and a first client render that
+  // differs from prerendered HTML is a hydration mismatch. The boot skeleton
+  // below outlives this effect, so the swap is never visible.
+  const [remembered, setRemembered] = useState<League>(DEFAULT_LEAGUE);
+  useEffect(() => {
+    const saved = localStorage.getItem(LS_KEY) as League | null;
+    if (saved && ACTIVE_LEAGUES.includes(saved)) setRemembered(saved);
+  }, []);
+
+  const league = leagueFromPath(pathname) ?? remembered;
+
+  // Picking a league navigates. It still records the choice, because the
+  // league-less routes have nowhere to navigate to and read `remembered`.
+  const setLeague = useCallback(
+    (lg: League) => {
+      localStorage.setItem(LS_KEY, lg);
+      setRemembered(lg);
+      const target = leagueSwitchTarget(pathname, lg);
+      if (target) navigate(target);
+    },
+    [pathname, navigate],
+  );
 
   useEffect(() => {
     // Each league resolves independently: first paint waits only for the
@@ -72,7 +93,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const store = useMemo(
     () => (all[league] ? { all, league, setLeague } : null),
-    [all, league],
+    [all, league, setLeague],
   );
 
   if (failed[league]) {
@@ -87,6 +108,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   if (!store) {
+    if (typeof document !== "undefined" && document.getElementById("oe-static")) {
+      return null;
+    }
     return (
       <div className="mx-auto max-w-5xl px-6 py-24" aria-busy="true">
         <div className="h-10 w-72 animate-pulse rounded bg-wash" />
@@ -323,5 +347,22 @@ export function useLineupChunk(
   const file = season ? `lineups-${league}-${season}.json` : null;
   const r = useLayerFile<LineupChunk>(file);
   if (r.status === "ready") return { status: "ready", chunk: r.data! };
+  return { status: r.status };
+}
+
+export type HeadshotState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; data: HeadshotMap };
+
+/** The league's headshot map (headshots-{LG}.json). Pass null for a league whose
+    faces come straight off a CDN by player id, or that has no source at all:
+    nothing is fetched. Lazy like every layer file — only the player page and
+    Compare render a face, so nothing is paid for on boot. */
+export function useHeadshots(league: League | null): HeadshotState {
+  const r = useLayerFile<HeadshotMap>(
+    league ? `headshots-${league}.json` : null,
+  );
+  if (r.status === "ready") return { status: "ready", data: r.data! };
   return { status: r.status };
 }

@@ -8,9 +8,16 @@
  * leagues that ship it.
  */
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useData, useDefense, useLeague } from "../data";
-import { LEAGUE_LABEL, leagueDef } from "../leagues";
+import { ACTIVE_LEAGUES, LEAGUE_LABEL, leagueDef, type League } from "../leagues";
+import {
+  DEFAULT_LEAGUE_LENS,
+  datedPart,
+  leagueLensKey,
+  leagueLensSlug,
+  leaguePath,
+} from "../routes";
 import type { DefenseTeamRow, TeamRow } from "../types";
 import { useTitle } from "../lib/useTitle";
 import { divergingColor, divergingText } from "../lib/color";
@@ -180,6 +187,16 @@ const DEF_LENSES: { key: DefKey; label: string }[] = [
   { key: "deterrence", label: "Rim deterrence" },
   { key: "suppression", label: "Conversion suppression" },
 ];
+
+/** Lens wording for the page title. Lowercase: it sits mid-phrase. */
+const LENS_TITLE_WORD: Record<LensKey, string> = {
+  value: "shot value",
+  making: "shot-making",
+  fouls: "free throws",
+  qualityForced: "quality forced",
+  deterrence: "rim deterrence",
+  suppression: "conversion suppression",
+};
 
 const reliabilityWord = (sb: number) =>
   sb >= 0.9 ? "solid" : sb >= 0.7 ? "usable" : "noisy";
@@ -466,11 +483,11 @@ function DefenseTable({ rows, pillar, label }: {
 /* ------------------------------------------------------------------ */
 
 export default function League() {
+  const { lg, season: seasonParam, lens: lensParam } = useParams();
   const data = useData();
   const { league } = useLeague();
+  const navigate = useNavigate();
   const def = leagueDef(league);
-  useTitle(`League context · Over Expected`);
-  const [params, setParams] = useSearchParams();
   const seasons = data.meta.seasons;
 
   const hasDefense = !!def.layers?.defense;
@@ -493,18 +510,44 @@ export default function League() {
     ...(hasDefense ? DEF_LENSES.map((l) => l.key) : []),
   ];
   const fallback: LensKey = hasSv ? "value" : "fouls";
-  const lens = (lenses.includes(params.get("lens") as LensKey)
-    ? params.get("lens")
-    : fallback) as LensKey;
-  const season = seasons.includes(params.get("season") ?? "")
-    ? (params.get("season") as string)
-    : data.meta.defaultSeason;
+  // League, season and lens come from the path. `lenses` stays the authority on
+  // which ones this league actually has a page for (the defence pillars need
+  // the team-defence layer), so a URL naming one it lacks is redirected rather
+  // than silently rendered as another lens.
+  const urlLens = leagueLensKey(lensParam);
+  const lensValid = !!urlLens && lenses.includes(urlLens as LensKey);
+  const lens = (lensValid ? urlLens : fallback) as LensKey;
+  const currentSeason = data.meta.defaultSeason;
+  const seasonValid = !seasonParam || seasons.includes(seasonParam);
+  const season = seasonParam && seasonValid ? seasonParam : currentSeason;
+  const leagueValid = !!lg && (ACTIVE_LEAGUES as string[]).includes(lg);
 
-  const setParam = (k: string, v: string) => {
-    const next = new URLSearchParams(params);
-    next.set(k, v);
-    setParams(next, { replace: false });
-  };
+  useTitle(
+    `${LEAGUE_LABEL[league]} team ${LENS_TITLE_WORD[lens]} ${season} · Over Expected`,
+  );
+
+  const go = (lensKey: LensKey, s: string) =>
+    navigate(
+      leaguePath(league, leagueLensSlug(lensKey), datedPart(s, currentSeason)),
+    );
+
+  // Every hook runs before this point on every path, valid or not: bailing out
+  // earlier would change the hook count between renders (React #310).
+  if (!leagueValid) {
+    return <Navigate to={leaguePath(league, DEFAULT_LEAGUE_LENS)} replace />;
+  }
+  if (!lensValid || !seasonValid) {
+    return (
+      <Navigate
+        to={leaguePath(
+          lg as League,
+          leagueLensSlug(lens),
+          datedPart(season, currentSeason),
+        )}
+        replace
+      />
+    );
+  }
 
   const isDefLens = (DEF_KEYS as readonly string[]).includes(lens);
   const baseRows = data.teams[season] ?? [];
@@ -532,7 +575,7 @@ export default function League() {
           shortLabel: `'${s.slice(2, 4)}-${s.slice(5)}`,
         }))}
         value={season}
-        onChange={(s) => setParam("season", s)}
+        onChange={(s) => go(lens, s)}
       />
 
       {/* the lens picker */}
@@ -542,7 +585,7 @@ export default function League() {
             key={l.key}
             type="button"
             aria-pressed={lens === l.key}
-            onClick={() => setParam("lens", l.key)}
+            onClick={() => go(l.key, season)}
             className={`group flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
               lens === l.key ? "border-ink bg-ink text-paper" : "border-line hover:bg-wash"
             }`}
@@ -567,7 +610,7 @@ export default function League() {
                 key={l.key}
                 type="button"
                 aria-pressed={lens === l.key}
-                onClick={() => setParam("lens", l.key)}
+                onClick={() => go(l.key, season)}
                 className={`group flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
                   lens === l.key ? "border-ink bg-ink text-paper" : "border-line hover:bg-wash"
                 }`}

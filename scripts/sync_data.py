@@ -106,6 +106,10 @@ LAYER_SOURCES = [
     # coaching (Layer 3) and team defence (Layer 4) are single files too.
     ("coaching-*.json", _NBA_PUBLIC, "coaching-chunks-none-*.json"),
     ("defense-*.json", _NBA_PUBLIC, "defense-chunks-none-*.json"),
+    # headshot URL maps, one per league that has a resolvable photo source.
+    # European exports only: NBA and WNBA faces come straight off their own CDNs
+    # by player id and need no map.
+    ("headshots-*.json", _EURO, "headshots-chunks-none-*.json"),
     # calibration is exported straight into site/public by the calibration
     # project, so it needs no copy step; listed here for the record only.
 ]

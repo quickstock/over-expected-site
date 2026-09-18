@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useTransition } from "react";
+import { useMemo, useTransition } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useLeague, useRapm } from "../../data";
+import { useRapm } from "../../data";
 import { ACTIVE_LEAGUES, leagueDef, type League } from "../../leagues";
 import type { RapmRow, LineupRow } from "../../types";
 import { divergingColor, divergingText } from "../../lib/color";
@@ -197,10 +197,6 @@ export default function LineupsBoard() {
     ? lg
     : ACTIVE_LEAGUES[0]) as League;
   const def = leagueDef(league);
-  const { league: active, setLeague } = useLeague();
-  useEffect(() => {
-    if (league !== active) setLeague(league);
-  }, [league, active, setLeague]);
   useTitle("Lineups · Over Expected");
 
   const [params, setParams] = useSearchParams();

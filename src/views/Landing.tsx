@@ -1,7 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useData, useLeague } from "../data";
-import { LEAGUE_LABEL, leagueDef } from "../leagues";
+import {
+  DEFAULT_BOARD_LENS,
+  DEFAULT_LEAGUE_LENS,
+  boardLensSlug,
+  boardPath,
+  datedPart,
+  leaguePath,
+  refereesPath,
+} from "../routes";
+import { LEAGUE_LABEL, leagueDef , type League } from "../leagues";
 import type { ShotValueRow } from "../types";
 import { int } from "../lib/format";
 import { Delta } from "../components/Delta";
@@ -21,7 +30,9 @@ type Lens = "value" | "making" | "fouls";
 /** A lens doorway: what it measures + the season's leader, into the board. */
 function LensCard({
   lens,
+  league,
   season,
+  current,
   label,
   desc,
   row,
@@ -29,7 +40,10 @@ function LensCard({
   count,
 }: {
   lens: Lens;
+  league: League;
   season: string;
+  /** The league's current season: linking to it uses the evergreen URL. */
+  current: string;
   label: string;
   desc: string;
   row: ShotValueRow | undefined;
@@ -38,7 +52,7 @@ function LensCard({
 }) {
   return (
     <Link
-      to={`/leaderboard?lens=${lens}&season=${encodeURIComponent(season)}`}
+      to={boardPath(league, boardLensSlug(lens), season === current ? undefined : season)}
       className="group flex flex-col border-t border-line pt-4 transition-colors duration-150 hover:bg-wash focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
     >
       <span className="font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
@@ -182,7 +196,9 @@ export default function Landing() {
         <div className="mt-10 grid gap-x-8 gap-y-6 sm:grid-cols-3">
           <LensCard
             lens="value"
+            league={league}
             season={season}
+            current={data.meta.defaultSeason}
             label="Shot value"
             desc="The points a player adds over expected: shots made above their difficulty, plus the free throws he draws."
             row={byValue}
@@ -191,7 +207,9 @@ export default function Landing() {
           />
           <LensCard
             lens="making"
+            league={league}
             season={season}
+            current={data.meta.defaultSeason}
             label="Shot-making"
             desc="Converting better, or worse, than the difficulty of the looks taken. Field goals only."
             row={byMaking}
@@ -200,7 +218,9 @@ export default function Landing() {
           />
           <LensCard
             lens="fouls"
+            league={league}
             season={season}
+            current={data.meta.defaultSeason}
             label="Foul-drawing"
             desc="Free throws drawn above the league's rate for the same context. The original FTAOE."
             row={byFouls}
@@ -211,7 +231,7 @@ export default function Landing() {
 
         <div className="mt-10 flex flex-wrap items-center gap-5">
           <Link
-            to="/leaderboard"
+            to={boardPath(league, DEFAULT_BOARD_LENS)}
             className="rounded-md bg-ink px-5 py-2.5 font-display text-sm font-medium text-paper transition-opacity duration-150 hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Explore the leaderboard
@@ -241,7 +261,7 @@ export default function Landing() {
         <p className="mt-3 text-xs text-ink-faint">
           {int(swarmPool.length)} players with ≥ {int(qualify)} possessions. Tap
           a dot for the player, or{" "}
-          <Link to="/leaderboard" className="underline underline-offset-2 transition-colors duration-150 hover:text-ink">
+          <Link to={boardPath(league, DEFAULT_BOARD_LENS)} className="underline underline-offset-2 transition-colors duration-150 hover:text-ink">
             open the full board
           </Link>
           .
@@ -267,7 +287,7 @@ export default function Landing() {
             decided by the shots he takes. The part that is the player is the
             vertical distance from the line, and it is what this site measures.{" "}
             <Link
-              to={`/leaderboard?lens=making&season=${encodeURIComponent(season)}`}
+              to={boardPath(league, "shot-making", datedPart(season, data.meta.defaultSeason))}
               className="underline underline-offset-2 transition-colors duration-150 hover:text-ink"
             >
               Every player on this lens →
@@ -294,7 +314,7 @@ export default function Landing() {
           />
         </div>
         <p className="mt-2">
-          <Link to="/league" className="font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft">
+          <Link to={leaguePath(league, DEFAULT_LEAGUE_LENS)} className="font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft">
             League context →
           </Link>
         </p>
@@ -312,7 +332,7 @@ export default function Landing() {
           <RefStrip refs={refs} />
         </div>
         <p className="mt-2">
-          <Link to={`/referees?season=${encodeURIComponent(season)}`} className="font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft">
+          <Link to={refereesPath(league, datedPart(season, data.meta.defaultSeason))} className="font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft">
             Every official →
           </Link>
         </p>

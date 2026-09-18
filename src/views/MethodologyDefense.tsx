@@ -198,7 +198,7 @@ export default function MethodologyDefense() {
 
       <p className="mt-14 border-t border-line pt-6">
         <Link
-          to="/league?lens=qualityForced"
+          to="/league/NBA/quality-forced"
           className="font-display text-sm font-medium text-ink underline underline-offset-4"
         >
           See team defence on the League page →

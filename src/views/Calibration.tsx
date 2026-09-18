@@ -11,11 +11,10 @@
  * qualification the data insists on.
  */
 import { Link, useParams } from "react-router-dom";
-import { useCalibration, useLeague } from "../data";
+import { useCalibration } from "../data";
 import { ACTIVE_LEAGUES, leagueDef, type League } from "../leagues";
 import { useTitle } from "../lib/useTitle";
 import { divergingText } from "../lib/color";
-import { useEffect } from "react";
 
 const H2 =
   "mt-14 font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl";
@@ -119,10 +118,6 @@ export default function Calibration() {
   const league = (lg && ACTIVE_LEAGUES.includes(lg as League)
     ? lg
     : "NBA") as League;
-  const { league: active, setLeague } = useLeague();
-  useEffect(() => {
-    if (league !== active) setLeague(league);
-  }, [league, active, setLeague]);
   useTitle("Calibration · Over Expected");
   const state = useCalibration();
 

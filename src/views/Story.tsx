@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useLeague, useLeagueData } from "../data";
 import { ACTIVE_LEAGUES } from "../leagues";
+import { boardPath } from "../routes";
 import { useTitle } from "../lib/useTitle";
 import { int, lastName, signed } from "../lib/format";
 import { Delta } from "../components/Delta";
@@ -157,7 +158,7 @@ export default function Story() {
 
       <div className="mt-14 flex flex-wrap items-center gap-5 border-t border-line pt-8">
         <Link
-          to="/leaderboard?lens=fouls&season=2021-22"
+          to={boardPath("NBA", "foul-drawing", "2021-22")}
           className="rounded-md bg-ink px-5 py-2.5 font-display text-sm font-medium text-paper transition-opacity duration-150 hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           The {AFTER} leaderboard

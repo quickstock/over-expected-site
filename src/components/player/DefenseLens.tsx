@@ -336,7 +336,7 @@ export default function DefenseLens({
         suppression) are measured per shot faced and split across all five
         defenders, so they live with the{" "}
         <Link
-          to="/league?lens=qualityForced"
+          to="/league/NBA/quality-forced"
           className="underline underline-offset-2 transition-colors duration-150 hover:text-ink"
         >
           team

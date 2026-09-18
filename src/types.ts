@@ -539,3 +539,17 @@ export interface DefenseData {
   };
   teams: Record<string, DefenseTeamRow[]>;
 }
+
+/** headshots-{LG}.json — the player-id -> photo-URL join for leagues whose CDN
+    does not expose a URL derivable from the id. */
+export interface HeadshotMap {
+  meta: {
+    league: string;
+    source: string;
+    generated: string;
+    players: number;
+    matched: number;
+    coverage: number;
+  };
+  urls: Record<string, string>;
+}

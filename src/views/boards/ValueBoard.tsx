@@ -9,14 +9,14 @@
  */
 import { useMemo, useTransition } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useLeague, useValue } from "../../data";
+import { useValue } from "../../data";
 import { ACTIVE_LEAGUES, leagueDef, type League } from "../../leagues";
+import { DEFAULT_BOARD_LENS, boardPath } from "../../routes";
 import type { ValueRow } from "../../types";
 import { divergingColor, divergingText, scaleMax } from "../../lib/color";
 import { int, signed } from "../../lib/format";
 import { useTitle } from "../../lib/useTitle";
 import SegmentedControl from "../../components/SegmentedControl";
-import { useEffect } from "react";
 
 type Sort = "war" | "net" | "poss" | "surplus";
 
@@ -45,7 +45,7 @@ function WarBar({ v, max }: { v: number; max: number }) {
   );
 }
 
-function Unavailable({ label }: { label: string }) {
+function Unavailable({ label, league }: { label: string; league: League }) {
   return (
     <div className="mx-auto max-w-xl px-5 py-28 text-center sm:px-8">
       <h1 className="font-display text-2xl font-semibold text-ink">
@@ -56,7 +56,7 @@ function Unavailable({ label }: { label: string }) {
         today, and per-player salaries, which only the NBA publishes at all.
       </p>
       <Link
-        to="/leaderboard"
+        to={boardPath(league, DEFAULT_BOARD_LENS)}
         className="mt-8 inline-block rounded-md bg-ink px-5 py-2.5 font-display text-sm font-medium text-paper"
       >
         Back to the leaderboard
@@ -71,10 +71,6 @@ export default function ValueBoard() {
     ? lg
     : ACTIVE_LEAGUES[0]) as League;
   const def = leagueDef(league);
-  const { league: active, setLeague } = useLeague();
-  useEffect(() => {
-    if (league !== active) setLeague(league);
-  }, [league, active, setLeague]);
   useTitle("Value · Over Expected");
 
   const [params, setParams] = useSearchParams();
@@ -114,7 +110,7 @@ export default function ValueBoard() {
       .sort((a, b) => mul * (key(a) - key(b)));
   }, [data, seasonSafe, minPossSafe, sortSafe, dirSafe]);
 
-  if (!def.layers?.value) return <Unavailable label={def.label} />;
+  if (!def.layers?.value) return <Unavailable label={def.label} league={league} />;
   if (state.status === "loading")
     return (
       <div className="mx-auto max-w-5xl px-6 py-24">

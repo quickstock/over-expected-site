@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useLeague, useLeagueData, usePlayerChunk, useRapm } from "../data";
+import { useLeagueData, usePlayerChunk, useRapm } from "../data";
 import { ACTIVE_LEAGUES, ftNoun, leagueDef, type League } from "../leagues";
 import type {
   FoulBreakdown,
@@ -9,6 +9,7 @@ import type {
   SeasonDetail,
   ShotValueRow,
 } from "../types";
+import { DEFAULT_BOARD_LENS, boardPath, datedPart } from "../routes";
 import { useTitle } from "../lib/useTitle";
 import { divergingText } from "../lib/color";
 import { int, ordinal, signed } from "../lib/format";
@@ -26,7 +27,7 @@ import Headshot from "../components/Headshot";
 
 const FORM_WINDOWS = ["5", "10", "15", "20"];
 
-function NotFound({ qualify }: { qualify: number }) {
+function NotFound({ qualify, league }: { qualify: number; league: League }) {
   return (
     <div className="mx-auto max-w-xl px-5 py-28 text-center sm:px-8">
       <p className="font-display text-2xl font-semibold text-ink">
@@ -37,7 +38,7 @@ function NotFound({ qualify }: { qualify: number }) {
         Below that, per-possession rates are too unstable to present.
       </p>
       <Link
-        to="/leaderboard"
+        to={boardPath(league, DEFAULT_BOARD_LENS)}
         className="mt-8 inline-block rounded-md bg-ink px-5 py-2.5 font-display text-sm font-medium text-paper transition-opacity duration-150 hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       >
         Back to the leaderboard
@@ -294,11 +295,6 @@ export default function Player() {
   // here means loading, and the guard below (after the hooks) shows the
   // skeleton rather than crashing or mislabelling it "not found".
   const data = useLeagueData(league);
-  const { league: activeLeague, setLeague } = useLeague();
-  // Keep the nav toggle in sync with the player being viewed.
-  useEffect(() => {
-    if (league !== activeLeague) setLeague(league);
-  }, [league, activeLeague, setLeague]);
   const def = leagueDef(league);
   const [params, setParams] = useSearchParams();
   const [formWindow, setFormWindow] = useState("10");
@@ -428,7 +424,7 @@ export default function Player() {
         <div className="mt-6 h-64 animate-pulse rounded bg-wash" />
       </div>
     );
-  if (!row || !season) return <NotFound qualify={qualify} />;
+  if (!row || !season) return <NotFound league={league} qualify={qualify} />;
 
   const myCareer = career.byId.get(id ?? "");
   const careerPer100 = myCareer ? (myCareer.ftaoe / myCareer.poss) * 100 : null;
@@ -448,7 +444,7 @@ export default function Player() {
   return (
     <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-14">
       <Link
-        to={`/leaderboard?season=${encodeURIComponent(season)}`}
+        to={boardPath(league, DEFAULT_BOARD_LENS, datedPart(season, data.meta.defaultSeason))}
         className="font-display text-sm text-ink-soft transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       >
         ← Leaderboard
@@ -842,7 +838,7 @@ export default function Player() {
 
       <p className="mt-16 border-t border-line pt-6">
         <Link
-          to={`/leaderboard?season=${encodeURIComponent(season)}`}
+          to={boardPath(league, DEFAULT_BOARD_LENS, datedPart(season, data.meta.defaultSeason))}
           className="font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           See everyone →

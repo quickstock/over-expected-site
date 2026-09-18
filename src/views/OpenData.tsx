@@ -93,6 +93,24 @@ export default function OpenData() {
           .
         </p>
         <p>
+          <strong>Licence.</strong> The data is published under{" "}
+          <a
+            href="https://creativecommons.org/licenses/by/4.0/"
+            className="underline underline-offset-2 transition-colors duration-150 hover:text-ink-soft"
+          >
+            CC BY 4.0
+          </a>
+          . Use it commercially or otherwise, modify it, redistribute it; the one
+          condition is attribution.
+        </p>
+        <div>
+          <p className="font-semibold">Cite it as</p>
+          <p className="mt-2 rounded border border-line bg-wash p-3 font-mono text-xs leading-relaxed">
+            Over Expected (2026). Points over expected per 100 possessions.
+            https://overexpected.com
+          </p>
+        </div>
+        <p>
           If you publish something built on this, credit "Over Expected"
           with a link back, and keep the framing descriptive: the number
           blends playstyle, contact-seeking skill, and officiating, and it

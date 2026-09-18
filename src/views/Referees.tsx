@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import type { CSSProperties } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useData, useLeague } from "../data";
-import { leagueDef } from "../leagues";
+import { ACTIVE_LEAGUES, LEAGUE_LABEL, leagueDef, type League } from "../leagues";
+import { datedPart, refereesPath } from "../routes";
 import { int, signed } from "../lib/format";
 import { useTitle } from "../lib/useTitle";
 import SegmentedControl from "../components/SegmentedControl";
@@ -39,16 +40,22 @@ function RefBar({ diff, className = "w-24" }: { diff: number; className?: string
 }
 
 export default function Referees() {
+  const { lg, season: seasonParam } = useParams();
   const data = useData();
   const { league } = useLeague();
+  const navigate = useNavigate();
   const refMinGames = leagueDef(league).refMinGames;
+  // Sort and direction stay query params: they are how one reader looks at this
+  // page. League and season are the page's identity, so they are path segments.
   const [params, setParams] = useSearchParams();
-  useTitle("Referees · Over Expected");
 
   const seasons = data.meta.seasons;
-  const season = seasons.includes(params.get("season") ?? "")
-    ? (params.get("season") as string)
-    : data.meta.defaultSeason;
+  const currentSeason = data.meta.defaultSeason;
+  const seasonValid = !seasonParam || seasons.includes(seasonParam);
+  const season = seasonParam && seasonValid ? seasonParam : currentSeason;
+  const leagueValid = !!lg && (ACTIVE_LEAGUES as string[]).includes(lg);
+
+  useTitle(`${LEAGUE_LABEL[league]} referees ${season} · Over Expected`);
   // Explicit sort = the user clicked a column; null = the page's own order
   // (diff desc), which renders with no direction indicator.
   const explicit = ["diff", "games", "per100"].includes(params.get("sort") ?? "")
@@ -57,11 +64,6 @@ export default function Referees() {
   const sort = explicit ?? "diff";
   const dir = params.get("dir") === "asc" ? "asc" : "desc";
 
-  const update = (patch: Record<string, string>) => {
-    const next = new URLSearchParams(params);
-    for (const [k, v] of Object.entries(patch)) next.set(k, v);
-    setParams(next, { replace: false });
-  };
   const onSort = (k: SortKey) => {
     const next = cycleSort(k, explicit, dir);
     const p = new URLSearchParams(params);
@@ -75,13 +77,17 @@ export default function Referees() {
     setParams(p, { replace: false });
   };
 
-  const lg = data.meta.leagueRateBySeason[season];
+  const leagueRate = data.meta.leagueRateBySeason[season];
   const rows = useMemo(() => {
     const mul = dir === "asc" ? 1 : -1;
     return [...(data.referees[season] ?? [])].sort(
       (a, b) => mul * (a[sort] - b[sort]),
     );
   }, [data.referees, season, sort, dir]);
+
+  // Every hook runs before this point on every path (React #310).
+  if (!leagueValid) return <Navigate to={refereesPath(league)} replace />;
+  if (!seasonValid) return <Navigate to={refereesPath(lg as League)} replace />;
 
   return (
     <div>
@@ -96,7 +102,9 @@ export default function Referees() {
               shortLabel: `'${s.slice(2, 4)}-${s.slice(5)}`,
             }))}
             value={season}
-            onChange={(s) => update({ season: s })}
+            onChange={(s) =>
+              navigate(refereesPath(league, datedPart(s, currentSeason)))
+            }
           />
           <span className="ml-auto font-mono tnum text-xs text-ink-faint">
             {int(rows.length)} officials
@@ -117,7 +125,8 @@ export default function Referees() {
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
           Drawn free throws per 100 possessions in the games each
           official worked, {season}, against the season league rate of{" "}
-          <span className="font-mono tnum">{lg.toFixed(1)}</span>. Minimum 20
+          <span className="font-mono tnum">{leagueRate.toFixed(1)}</span>. Minimum{" "}
+          {refMinGames}
           games. Tap a name for how the whistle moves by quarter and by game
           script.
         </p>

@@ -190,7 +190,7 @@ export default function MethodologyCoaching() {
 
       <p className="mt-14 border-t border-line pt-6">
         <Link
-          to="/league"
+          to="/league/NBA/shot-value"
           className="font-display text-sm font-medium text-ink underline underline-offset-4"
         >
           See Clutch Decision-making on the League page →

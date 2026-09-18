@@ -15,11 +15,14 @@ Asserts the things that would be embarrassing to discover live:
 
 Deliberately dumb and readable: a gate nobody can follow is a gate nobody trusts.
 """
+import collections
+import hashlib
 import json
 import re
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 HERE = Path(__file__).resolve().parent
 SITE = HERE.parent
@@ -194,6 +197,381 @@ def check_row_shapes():
         ok(f"{checked} layer file(s) have all UI-required row fields")
 
 
+# The app and the static generator each carry the lens-slug tables: src/routes.ts
+# builds the links, generate-static.mjs builds the shells and canonicals. A slug
+# that drifts between them is a 404 or a canonical pointing at a page that does
+# not exist, several hundred URLs at a time, and every HTTP check still returns
+# 200 because the SPA rewrite serves the shell. So compare them.
+def check_routing_contract():
+    print("8. routing contract: slugs, links, redirect targets")
+    routes = (SITE / "src" / "routes.ts").read_text()
+    gen = (HERE / "generate-static.mjs").read_text()
+
+    def slugs(text, name):
+        m = re.search(rf"const {name} = \[(.*?)\n\]", text, re.S)
+        return re.findall(r'slug: "([^"]+)"', m.group(1)) if m else []
+
+    for name in ("BOARD_LENSES", "LEAGUE_LENSES"):
+        a, b = slugs(routes, name), slugs(gen, name)
+        if not a or not b:
+            fail(f"{name}: could not read the slug table from both files")
+        elif a != b:
+            fail(f"{name} slugs differ: routes.ts {a} vs generate-static.mjs {b}")
+        else:
+            ok(f"{name}: {len(a)} slugs agree across app and generator")
+
+    # Nothing in the app should link at a URL the CDN 301s away from: the reader
+    # pays a redirect and the link equity lands on the destination anyway.
+    redirects = json.loads((SITE / "vercel.json").read_text()).get("redirects", [])
+    sources = [r["source"] for r in redirects]
+    bad = []
+    for f in sorted((SITE / "src").rglob("*.tsx")):
+        text = f.read_text()
+        for src_path in sources:
+            if f'to="{src_path}"' in text:
+                bad.append(f"{f.name} -> {src_path}")
+    if bad:
+        fail(f"internal links point at redirecting URLs: {bad}")
+    else:
+        ok(f"no internal link targets any of the {len(sources)} redirect sources")
+
+    # A 301 into a 404 is invisible to an HTTP check of the source URL.
+    dist = SITE / "dist"
+    if not dist.exists():
+        warn("dist absent - run the build before the gate to check redirect targets")
+        return
+    missing = [
+        r["destination"]
+        for r in redirects
+        if not (dist / r["destination"].strip("/") / "index.html").exists()
+    ]
+    if missing:
+        fail(f"redirect destinations have no shell in dist: {missing}")
+    else:
+        ok(f"all {len(redirects)} redirect destinations exist in dist")
+
+
+# The 2026-08-13 facecards were invisible in production for five days because the
+# CSP did not name cdn.nba.com and the component's onError fallback made a total
+# block look like flaky bot-detection. So this is mechanical now: every host that
+# appears in a shipped headshot map must appear in img-src.
+def check_headshots():
+    print("9. headshots: declared maps exist, every host is in the CSP")
+    reg = (SITE / "src" / "leagues.ts").read_text()
+    active = re.search(r"ACTIVE_LEAGUES:\s*League\[\]\s*=\s*\[(.*?)\]", reg, re.S)
+    leagues = re.findall(r'"([A-Z]+)"', active.group(1)) if active else []
+    mapped = []
+    for lg in leagues:
+        block = re.search(rf'{lg}:\s*{{(.*?)\n  }},', reg, re.S)
+        if block and 'headshots: "map"' in block.group(1):
+            mapped.append(lg)
+    missing = [lg for lg in mapped if not (PUBLIC / f"headshots-{lg}.json").exists()]
+    if missing:
+        fail(f"leagues declare headshots:\"map\" but have no map file: {missing}")
+        return
+    ok(f"{len(mapped)} league(s) declare a headshot map and all are present")
+
+    csp = json.loads((SITE / "vercel.json").read_text())["headers"][0]["headers"][0]["value"]
+    img_src = re.search(r"img-src[^;]*", csp).group(0)
+    hosts, low = set(), []
+    for lg in mapped:
+        d = json.loads((PUBLIC / f"headshots-{lg}.json").read_text())
+        cov = d["meta"]["coverage"]
+        if cov < 0.5:
+            low.append(f"{lg} {cov:.0%}")
+        for u in d["urls"].values():
+            hosts.add(urlparse(u).netloc)
+    absent = sorted(h for h in hosts if h not in img_src)
+    if absent:
+        fail(f"headshot hosts missing from CSP img-src: {absent} — the images "
+             f"would be blocked and the fallback would hide it")
+    else:
+        ok(f"all {len(hosts)} headshot hosts are allowed by img-src")
+    if low:
+        warn(f"headshot coverage under 50%: {low}")
+
+
+# A sitemap that silently loses a section, or that lists a page carrying
+# noindex, is invisible to any HTTP check: every URL still answers 200.
+def check_sitemaps():
+    print("10. sitemaps, robots and feed")
+    dist = SITE / "dist"
+    if not dist.exists():
+        warn("dist absent - run the build before the gate to check sitemaps")
+        return
+    index = dist / "sitemap.xml"
+    if not index.exists():
+        fail("no sitemap.xml")
+        return
+    idx = index.read_text()
+    if "<sitemapindex" not in idx:
+        fail("sitemap.xml is not an index")
+        return
+    parts = re.findall(r"<loc>[^<]*/(sitemap-[^<]+\.xml)</loc>", idx)
+    if not parts:
+        fail("sitemap index references no section files")
+        return
+    total, empty = 0, []
+    listed = set()
+    for name in parts:
+        f = dist / name
+        if not f.exists():
+            fail(f"sitemap index references {name}, which does not exist")
+            continue
+        locs = re.findall(r"<loc>([^<]+)</loc>", f.read_text())
+        if not locs:
+            empty.append(name)
+        total += len(locs)
+        listed.update(locs)
+    if empty:
+        fail(f"empty sitemap section(s): {empty}")
+    shells = sum(1 for _ in dist.rglob("index.html"))
+    if total < shells * 0.9:
+        fail(f"sitemaps list {total} urls against {shells} shells on disk; "
+             f"a section is probably missing")
+    else:
+        ok(f"{len(parts)} sections, {total} urls, {shells} shells on disk")
+
+    # A noindex page in a sitemap is a contradictory instruction.
+    bad = []
+    for f in dist.rglob("index.html"):
+        h = f.read_text()
+        if 'content="noindex' not in h:
+            continue
+        m = re.search(r'rel="canonical" href="([^"]+)"', h)
+        if m and m.group(1) in listed:
+            bad.append(m.group(1))
+    if bad:
+        fail(f"noindex pages listed in a sitemap: {bad[:4]}")
+    else:
+        ok("no noindex page appears in any sitemap")
+
+    robots = (dist / "robots.txt")
+    if not robots.exists() or "Sitemap:" not in robots.read_text():
+        fail("robots.txt missing or does not point at the sitemap")
+    else:
+        ok("robots.txt points at the sitemap index")
+    feed = dist / "feed.json"
+    if not feed.exists():
+        fail("no feed.json")
+    else:
+        items = json.loads(feed.read_text()).get("items", [])
+        if not items:
+            fail("feed.json has no items")
+        else:
+            ok(f"feed.json carries {len(items)} dated update(s)")
+
+
+# JSON-LD is invisible to every HTTP check and to TypeScript: the values come
+# from JSON at runtime. So assert the shapes in the built HTML, where they ship.
+DATASET_REQUIRED = ["name", "description", "creator", "temporalCoverage",
+                    "variableMeasured", "license", "distribution"]
+
+
+def check_jsonld():
+    print("11. JSON-LD shapes in the built HTML")
+    dist = SITE / "dist"
+    if not dist.exists():
+        warn("dist absent - run the build before the gate to check JSON-LD")
+        return
+    samples = ["index.html", "data/index.html", "methodology/index.html",
+               "leaderboard/NBA/shot-value/index.html",
+               "league/NBA/free-throws/index.html", "referees/NBA/index.html",
+               "player/NBA/1628983/index.html"]
+    seen, bad, datasets = set(), [], 0
+    for rel in samples:
+        f = dist / rel
+        if not f.exists():
+            fail(f"expected page missing: {rel}")
+            continue
+        m = re.search(r'<script type="application/ld\+json">(.*?)</script>',
+                      f.read_text(), re.S)
+        if not m:
+            fail(f"{rel}: no JSON-LD")
+            continue
+        try:
+            graph = json.loads(m.group(1).replace("\\u003c", "<"))["@graph"]
+        except Exception as e:
+            fail(f"{rel}: JSON-LD does not parse ({e})")
+            continue
+        for node in graph:
+            t = node.get("@type")
+            seen.add(t)
+            if t == "Dataset":
+                datasets += 1
+                missing = [k for k in DATASET_REQUIRED if k not in node]
+                if missing:
+                    bad.append(f"{rel}: Dataset missing {missing}")
+                elif node["license"] != "https://creativecommons.org/licenses/by/4.0/":
+                    bad.append(f"{rel}: Dataset license is not CC BY 4.0")
+                elif not re.fullmatch(r"\d{4}/\d{4}", node["temporalCoverage"]):
+                    bad.append(f"{rel}: temporalCoverage {node['temporalCoverage']!r} "
+                               f"is not a year interval")
+    for req in ("Organization", "WebSite", "Dataset", "DataCatalog",
+                "BreadcrumbList", "Person", "FAQPage", "Article",
+                "SportsOrganization"):
+        if req not in seen:
+            fail(f"no {req} found in the sampled pages")
+    if bad:
+        for b in bad[:5]:
+            fail(b)
+    else:
+        ok(f"{datasets} Dataset node(s) carry every required field, CC BY 4.0, "
+           f"real season coverage")
+    ok(f"types present: {', '.join(sorted(t for t in seen if t))}")
+
+
+# One canonical description of the site is the whole point of the constant. Two
+# copies exist because generate-static.mjs cannot import a .ts file, so assert
+# they are identical rather than trusting a comment to keep them so.
+def check_site_line():
+    print("12. the canonical site sentence is stated identically")
+    ts = (SITE / "src" / "lib" / "site.ts").read_text()
+    m = re.search(r'export const SITE_LINE =\s*\n?\s*"([^"]+)"', ts)
+    if not m:
+        fail("could not read SITE_LINE from src/lib/site.ts")
+        return
+    from_src = m.group(1)
+    gen = (HERE / "generate-static.mjs").read_text()
+    labels = re.search(r"const LEAGUE_LABEL = \{(.*?)\n\};", gen, re.S).group(1)
+    label = dict(re.findall(r'(\w+):\s*"([^"]+)"', labels))
+    order = re.findall(r'"([A-Z]+)"',
+                       re.search(r"const LEAGUES = \[([^\]]*)\]", gen).group(1))
+    rebuilt = ("Over Expected is a basketball shot-value platform covering "
+               + ", ".join(label[lg] for lg in order) + ".")
+    if rebuilt != from_src:
+        fail(f"SITE_LINE differs:\n      src: {from_src}\n      gen: {rebuilt}")
+    else:
+        ok("src/lib/site.ts and the generator state the same sentence")
+    dist = SITE / "dist"
+    if dist.exists():
+        f = dist / "leaderboard" / "NBA" / "shot-value" / "index.html"
+        if f.exists() and from_src not in f.read_text():
+            fail("the sentence is not present in a built page's static block")
+        else:
+            ok("the sentence appears in the prerendered content")
+
+
+# Orphan and drift checks on the link graph. A sitemap URL with no shell is a
+# 404 that the sitemap advertises; a glossary term with no inbound link is a page
+# nothing can reach.
+def check_link_graph():
+    print("13. link graph: no advertised URL without a page, no orphan term")
+    dist = SITE / "dist"
+    if not dist.exists():
+        warn("dist absent - run the build before the gate to check the link graph")
+        return
+    listed = []
+    for f in dist.glob("sitemap-*.xml"):
+        listed += re.findall(r"<loc>[^<]*?overexpected\.com([^<]*)</loc>", f.read_text())
+    missing = [u for u in listed
+               if not (dist / u.strip("/") / "index.html").exists() and u != "/"]
+    if missing:
+        fail(f"{len(missing)} sitemap url(s) have no page in dist, e.g. {missing[:3]}")
+    else:
+        ok(f"all {len(listed)} sitemap urls have a page on disk")
+
+    index = dist / "glossary" / "index.html"
+    if not index.exists():
+        fail("no /glossary index page")
+        return
+    terms = json.loads((SITE / "src" / "content" / "glossary.json").read_text())["terms"]
+    html = index.read_text()
+    orphans = [t["slug"] for t in terms if f"/glossary/{t['slug']}" not in html]
+    if orphans:
+        fail(f"glossary terms not linked from the index: {orphans[:4]}")
+    else:
+        ok(f"the index links all {len(terms)} glossary terms")
+
+    # Every section has to be reachable inside the app, not only from a
+    # prerendered block, or a human can never navigate to it.
+    tsx = "\n".join(f.read_text() for f in (SITE / "src").rglob("*.tsx"))
+    orphan_sections = [h for h in ("/glossary", "/metrics", "/changelog", "/about")
+                       if f'to="{h}"' not in tsx]
+    if orphan_sections:
+        fail(f"nothing in the app links to {orphan_sections}; orphaned section(s)")
+    else:
+        ok("glossary, comparisons, changelog and about are all reachable in-app")
+
+    # Comparisons must each name a glossary term that exists, or the "definitions"
+    # link at the foot of the page goes nowhere.
+    comps = json.loads((SITE / "src" / "content" / "comparisons.json").read_text())
+    slugs = {t["slug"] for t in terms}
+    bad_ref = [c["slug"] for c in comps["comparisons"]
+               if c["ours"] not in slugs
+               or (c.get("oursAlt") and c["oursAlt"] not in slugs)]
+    if bad_ref:
+        fail(f"comparison pages reference a missing glossary term: {bad_ref}")
+    else:
+        ok(f"all {len(comps['comparisons'])} comparisons reference real terms")
+
+    # Player pages carry a related block built from nearest neighbours; spot-check
+    # that it rendered rather than silently collapsing to an empty string.
+    sample = dist / "player" / "NBA" / "1628983" / "index.html"
+    if sample.exists() and "Closest to" not in sample.read_text():
+        fail("player pages carry no related-players block")
+    elif sample.exists():
+        ok("player pages carry a data-derived related block")
+
+
+def check_static_bodies():
+    """An indexable page must ship visible content, and its content must not be
+    another indexable page's content.
+
+    Both halves of this were live on overexpected.com and returned HTTP 200 the
+    whole time. Seventeen sitemap-listed routes were shelled without a static
+    block, so their served body was an empty <div id="root">; to any crawl that
+    does not execute JavaScript they were one page repeated seventeen times, and
+    Google collapsed them onto a canonical of its own choosing (Search Console:
+    "Duplicate, Google chose different canonical than user"). Nine of them, the
+    per-league /calibration pages, were byte-identical apart from a league name
+    in the <title>.
+
+    The exact-duplicate half deliberately allows the dated/evergreen twins: those
+    are the same page at two URLs on purpose, and the dated one canonicals to the
+    season-less one.
+    """
+    print("14. static bodies are present and distinct")
+    dist = SITE / "dist"
+    if not dist.exists():
+        warn("dist absent - run the build before the gate to check static bodies")
+        return
+
+    pages = {}
+    for f in dist.rglob("index.html"):
+        h = f.read_text()
+        if 'content="noindex' in h:
+            continue
+        url = "/" + str(f.relative_to(dist).parent).replace(".", "").strip("/")
+        i, j = h.find('<div id="oe-static"'), h.find('<div id="root">')
+        pages[url] = h[i:j] if 0 <= i < j else ""
+
+    empty = sorted(u for u, b in pages.items() if not b.strip())
+    if empty:
+        fail(f"{len(empty)} indexable page(s) ship no static body, so they are "
+             f"one duplicate cluster to a non-rendering crawler: {empty[:6]}")
+    else:
+        ok(f"all {len(pages)} indexable pages ship a static body")
+
+    groups = collections.defaultdict(list)
+    for url, body in pages.items():
+        if body.strip():
+            groups[hashlib.md5(body.encode()).hexdigest()].append(url)
+    # A cluster is expected when its members differ only by a season segment:
+    # /leaderboard/NBA/shot-value and /leaderboard/NBA/2025-26/shot-value.
+    season = re.compile(r"/\d{4}-\d{2}(?=/|$)")
+    bad = [
+        sorted(v) for v in groups.values()
+        if len(v) > 1 and len({season.sub("", u) for u in v}) > 1
+    ]
+    if bad:
+        fail(f"{len(bad)} set(s) of distinct indexable URLs ship identical "
+             f"bodies: {bad[:3]}")
+    else:
+        twins = sum(len(v) for v in groups.values() if len(v) > 1)
+        ok(f"no unintended identical bodies ({twins} dated/evergreen twins)")
+
+
 def check_tests():
     print("5. never-skip test suites")
     for label, cwd, target in (
@@ -233,6 +611,13 @@ def main():
     check_unavailable_flags()
     check_registry_layer_files()
     check_row_shapes()
+    check_routing_contract()
+    check_headshots()
+    check_sitemaps()
+    check_jsonld()
+    check_site_line()
+    check_link_graph()
+    check_static_bodies()
     check_tests()
     check_og_envelope()
 

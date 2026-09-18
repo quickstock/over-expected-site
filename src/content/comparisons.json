@@ -1,0 +1,339 @@
+{
+ "generated": "2026-08-19",
+ "comparisons": [
+  {
+   "slug": "points-over-expected-vs-true-shooting",
+   "title": "Points over expected vs true shooting percentage",
+   "question": "What is the difference between points over expected and true shooting percentage?",
+   "lead": "True shooting percentage asks how efficiently a player scored. Points over expected asks how much he scored above what his shots were worth. The first is an efficiency rate, the second is a residual against a model, and they disagree whenever a player's shot diet is unusually easy or unusually hard.",
+   "ours": "points-over-expected",
+   "theirs": {
+    "name": "True shooting percentage",
+    "abbr": "TS%",
+    "formula": "TS% = PTS / (2 x (FGA + 0.44 x FTA))",
+    "what": "Points per scoring attempt, counting free throws at a fixed 0.44 weight."
+   },
+   "rows": [
+    [
+     "Prices shot difficulty",
+     "Yes, every attempt is priced by location and context",
+     "No, a layup and a stepback count the same"
+    ],
+    [
+     "Values free throws",
+     "Yes, above the rate the situation usually produces",
+     "Yes, but at a fixed 0.44 weight per attempt"
+    ],
+    [
+     "Baseline",
+     "That season's own league rate",
+     "None; it is an absolute rate"
+    ],
+    [
+     "Unit",
+     "Points per 100 possessions",
+     "Percent"
+    ]
+   ],
+   "use": "Use true shooting to ask who scored efficiently. Use points over expected to ask who beat the shots they took. A high-TS% rim finisher and a high-POE pull-up shooter are doing different things.",
+   "neither": "Neither separates a player from his team's spacing or playmaking, and neither measures defence."
+  },
+  {
+   "slug": "points-over-expected-vs-effective-field-goal",
+   "title": "Points over expected vs effective field goal percentage",
+   "question": "How does points over expected differ from effective field goal percentage?",
+   "lead": "Effective field goal percentage credits a three as worth 1.5 twos and stops there. Points over expected goes further: it prices every attempt by how likely it was to go in from where and how it was taken, then reports the gap.",
+   "ours": "points-over-expected",
+   "theirs": {
+    "name": "Effective field goal percentage",
+    "abbr": "eFG%",
+    "formula": "eFG% = (FGM + 0.5 x 3PM) / FGA",
+    "what": "Field goal percentage with threes weighted for their extra point."
+   },
+   "rows": [
+    [
+     "Adjusts for shot location",
+     "Only three versus two",
+     "Yes, continuously"
+    ],
+    [
+     "Includes free throws",
+     "No",
+     "Yes"
+    ],
+    [
+     "Rewards shot selection",
+     "Indirectly, by rewarding threes",
+     "Separately: shot value and shot-making are different lenses"
+    ],
+    [
+     "Unit",
+     "Percent",
+     "Points per 100 possessions"
+    ]
+   ],
+   "use": "Effective field goal percentage is the better quick read on shooting mix. Points over expected is the better read on whether a player exceeded his own looks.",
+   "neither": "Neither can see how open the shooter was; openness is not in the public data."
+  },
+  {
+   "slug": "shot-quality-vs-shot-making",
+   "title": "Shot quality vs shot-making",
+   "question": "What is the difference between shot quality and shot-making?",
+   "lead": "They are the two halves this site deliberately keeps apart. Shot quality is what the looks were worth before anyone shot them. Shot-making is whether the player beat those looks. A player can be excellent at one and poor at the other.",
+   "ours": "expected-points-per-shot",
+   "oursAlt": "shot-making-over-expected",
+   "theirs": null,
+   "rows": [
+    [
+     "Question",
+     "How good were the shots?",
+     "Did he beat the shots?"
+    ],
+    [
+     "Metric",
+     "Expected points per shot",
+     "Shot-making over expected"
+    ],
+    [
+     "Driven by",
+     "Selection, spacing, playmaking",
+     "Touch and shooting skill"
+    ],
+    [
+     "Stability",
+     "High: shot diet repeats",
+     "Lower: shooting varies year to year"
+    ]
+   ],
+   "use": "Read them together. A rising shot-value figure driven by shot quality is a different claim from one driven by shot-making, and only the first is mostly under a team's control.",
+   "neither": "Neither attributes shot quality between the player, the system and the coach."
+  },
+  {
+   "slug": "rapm-vs-box-plus-minus",
+   "title": "RAPM vs box plus/minus",
+   "question": "Is RAPM better than box plus/minus?",
+   "lead": "Box plus/minus estimates impact from box-score production. RAPM estimates it from what happened while a player was on the floor, holding teammates and opponents fixed. They are answering the same question from different evidence, and RAPM's evidence is closer to the question.",
+   "ours": "net-rapm",
+   "theirs": {
+    "name": "Box plus/minus",
+    "abbr": "BPM",
+    "formula": null,
+    "what": "A regression that predicts a player's impact per 100 possessions from his box-score line and his team's performance."
+   },
+   "rows": [
+    [
+     "Input",
+     "On-court stints",
+     "Box-score totals"
+    ],
+    [
+     "Needs play-by-play",
+     "Yes",
+     "No"
+    ],
+    [
+     "Sees things the box score misses",
+     "Yes, in principle",
+     "No, by construction"
+    ],
+    [
+     "Noise on small samples",
+     "High; shrunk toward a box-score prior",
+     "Low, because the box score is stable"
+    ]
+   ],
+   "use": "This site uses RAPM, and uses a box-score prior to shrink it where possessions are thin, which is an attempt to take the strengths of both. On a full season of possessions prefer RAPM; on a few hundred prefer the prior.",
+   "neither": "Neither is causal, and neither can separate a player from the lineups he happened to play in."
+  },
+  {
+   "slug": "euroleague-vs-nba-shot-difficulty",
+   "title": "EuroLeague vs NBA shot difficulty",
+   "question": "Are EuroLeague shots harder than NBA shots?",
+   "lead": "This site cannot answer that, and the reason is worth stating rather than hiding. The expected-points model is fit **separately for each league** and anchored to each season's own league rate, so a figure means \"against this league, this season\" and nothing more. Comparing the raw numbers across leagues compares two different yardsticks.",
+   "ours": "expected-points-per-shot",
+   "theirs": null,
+   "rows": [
+    [
+     "League",
+     "Median expected points per shot",
+     "Median expected FG%",
+     "Median FG%",
+     "League free throws / 100"
+    ],
+    [
+     "NBA",
+     "1.247",
+     "46.0%",
+     "46.3%",
+     "18.4"
+    ],
+    [
+     "EuroLeague",
+     "1.315",
+     "46.2%",
+     "46.7%",
+     "24.0"
+    ],
+    [
+     "EuroCup",
+     "1.304",
+     "44.8%",
+     "46.2%",
+     "25.8"
+    ],
+    [
+     "Liga ACB",
+     "1.327",
+     "44.9%",
+     "46.1%",
+     "25.4"
+    ],
+    [
+     "Lega Basket Serie A",
+     "1.284",
+     "44.8%",
+     "44.9%",
+     "24.6"
+    ],
+    [
+     "Basketball Bundesliga",
+     "1.281",
+     "44.5%",
+     "44.6%",
+     "27.6"
+    ],
+    [
+     "Greek Basket League",
+     "1.300",
+     "45.9%",
+     "47.0%",
+     "25.4"
+    ],
+    [
+     "ABA Liga",
+     "1.311",
+     "45.3%",
+     "45.9%",
+     "27.1"
+    ],
+    [
+     "WNBA",
+     "1.211",
+     "43.3%",
+     "42.6%",
+     "22.5"
+    ]
+   ],
+   "tableNote": "Current season per league. Shown because the figures are real and often asked for, NOT because they are comparable: each column comes from a model fit on that league alone.",
+   "use": "Use them within a league. To compare leagues you would need one model fit across all of them on a shared feature set, which the differing public feeds do not currently support.",
+   "neither": "No number here supports a claim that one league's shots are harder than another's."
+  },
+  {
+   "slug": "expected-points-vs-expected-value",
+   "title": "Expected points vs expected value",
+   "question": "What is the difference between expected points and expected value in basketball?",
+   "lead": "Expected points values a shot that was taken. Expected value, as this site uses it in the clutch-decision layer, values a choice between options at the moment it was made, in win probability rather than points.",
+   "ours": "expected-points-per-shot",
+   "oursAlt": "decision-expected-value",
+   "theirs": null,
+   "rows": [
+    [
+     "Unit",
+     "Points per shot",
+     "Points of win probability"
+    ],
+    [
+     "Scope",
+     "One attempt",
+     "A decision between two options"
+    ],
+    [
+     "Depends on score and clock",
+     "No",
+     "Entirely"
+    ],
+    [
+     "Uses the outcome",
+     "No",
+     "No, and a test asserts it"
+    ]
+   ],
+   "use": "Expected points tells you whether a shot was a good shot. Expected value tells you whether it was the right shot to take in that situation.",
+   "neither": "Neither says whether the shot went in, which is the point of both."
+  },
+  {
+   "slug": "ftaoe-vs-free-throw-rate",
+   "title": "Free throws over expected vs free throw rate",
+   "question": "How is free throws over expected different from free throw rate?",
+   "lead": "Free throw rate counts trips to the line per shot. Free throws over expected asks whether a player draws more than his situations usually produce, which separates a player who seeks contact from one who simply shoots a lot of layups.",
+   "ours": "free-throws-over-expected",
+   "theirs": {
+    "name": "Free throw rate",
+    "abbr": "FTr",
+    "formula": "FTr = FTA / FGA",
+    "what": "Free-throw attempts per field-goal attempt."
+   },
+   "rows": [
+    [
+     "Adjusts for shot context",
+     "Yes",
+     "No"
+    ],
+    [
+     "Baseline",
+     "That season's own league rate",
+     "None"
+    ],
+    [
+     "Rewards a rim-heavy diet",
+     "Only above what the rim usually draws",
+     "Yes, fully"
+    ],
+    [
+     "Unit",
+     "Attempts per 100 possessions vs expectation",
+     "Ratio"
+    ]
+   ],
+   "use": "Free throw rate is the simpler description. Free throws over expected is the one that isolates the part not explained by where a player shoots.",
+   "neither": "Neither distinguishes contact-seeking skill from the officiating a player happens to receive."
+  },
+  {
+   "slug": "team-defence-rating-vs-shots-forced",
+   "title": "Defensive rating vs shot quality forced",
+   "question": "Is defensive rating or shot quality forced the better measure of a defence?",
+   "lead": "Defensive rating counts what a defence conceded. Shot quality forced prices what it allowed opponents to attempt, before those attempts went in or out. The second is far more repeatable, which the site measured rather than assumed.",
+   "ours": "quality-forced",
+   "theirs": {
+    "name": "Defensive rating",
+    "abbr": "DRtg",
+    "formula": "DRtg = points allowed / possessions x 100",
+    "what": "Points a team concedes per 100 defensive possessions."
+   },
+   "rows": [
+    [
+     "Separates shot quality from opponent shooting",
+     "Yes",
+     "No"
+    ],
+    [
+     "Split-half reliability on this site's data",
+     "0.981 over 180 team-seasons",
+     "Not published here"
+    ],
+    [
+     "Affected by opponent hot streaks",
+     "Little",
+     "Heavily"
+    ],
+    [
+     "Unit",
+     "Expected points per shot vs league",
+     "Points per 100 possessions"
+    ]
+   ],
+   "use": "Use shot quality forced to ask what a defence makes opponents do, and points allowed as the unadjusted outcome. The site publishes both and orders its defensive pillars by measured reliability.",
+   "neither": "Neither is a player metric. The shot-level player version was built and rejected at 0.348 split-half reliability."
+  }
+ ]
+}

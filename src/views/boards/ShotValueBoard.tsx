@@ -59,8 +59,12 @@ function QualBar({ value, lo = 0.85, hi = 1.65 }: { value: number; lo?: number; 
   );
 }
 
-export default function ShotValueBoard({ lens, lensControl }: {
-  lens: Mode; lensControl: ReactNode;
+export default function ShotValueBoard({ lens, lensControl, season, onSeason }: {
+  lens: Mode;
+  lensControl: ReactNode;
+  /** Resolved from the path by the route, not from a query param. */
+  season: string;
+  onSeason: (season: string) => void;
 }) {
   const data = useData();
   const { league } = useLeague();
@@ -71,15 +75,6 @@ export default function ShotValueBoard({ lens, lensControl }: {
   const seasons = data.meta.seasons;
   const byseason = data.shotValue ?? {};
   const validSorts = SORTS[lens];
-  // Default to the latest season that actually has shot-value rows.
-  const withData = seasons.filter((s) => (byseason[s]?.length ?? 0) > 0);
-  const latest = withData.includes(data.meta.defaultSeason)
-    ? data.meta.defaultSeason
-    : withData[withData.length - 1] ?? data.meta.defaultSeason;
-
-  const season = seasons.includes(params.get("season") ?? "")
-    ? (params.get("season") as string)
-    : latest;
   // Explicit sort = the user clicked a column; null = the lens's own
   // headline order, which renders with no direction indicator.
   const explicit = validSorts.includes((params.get("sort") ?? "") as SortKey)
@@ -150,7 +145,7 @@ export default function ShotValueBoard({ lens, lensControl }: {
               value: s, label: s, shortLabel: `'${s.slice(2, 4)}-${s.slice(5)}`,
             }))}
             value={season}
-            onChange={(s) => update({ season: s })}
+            onChange={onSeason}
           />
           {hasPositions && (
             <SegmentedControl

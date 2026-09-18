@@ -1,0 +1,60 @@
+{
+ "generated": "2026-08-19",
+ "entries": [
+  {
+   "date": "2026-08-19",
+   "title": "Glossary, and headshots for six more leagues",
+   "body": "Added a glossary page for every quantity the site measures, each with its unit, its real range and what it does not tell you. Player photos now resolve for EuroLeague, EuroCup, Liga ACB, Lega Basket Serie A, ABA Liga and the Greek Basket League, taking faces from 743 to 2,799 of 3,301 player pages."
+  },
+  {
+   "date": "2026-08-18",
+   "title": "League, season and metric moved into the URL",
+   "body": "Every league, season and lens combination is now its own address, so a specific leaderboard can be linked and shared. The old bare paths redirect permanently. Every page also ships its content as HTML, so it is readable without JavaScript."
+  },
+  {
+   "date": "2026-08-13",
+   "title": "Compare caught up to the player page",
+   "body": "Compare became a top-level section and gained the player card's four lenses, a head-to-head stat table, a shared shot-diet court and trailing form on one axis. NBA and WNBA player photos added."
+  },
+  {
+   "date": "2026-08-09",
+   "title": "Player page reshaped around defence",
+   "body": "Defence became a fourth lens on the player page, showing D-RAPM with its interval against the season's qualified field. The sample-reliability and lineup-impact panels were removed."
+  },
+  {
+   "date": "2026-08-08",
+   "title": "League became the team hub",
+   "body": "Team shot value and shot-making joined free throws on the league page, alongside the three defence pillars and clutch decision-making. Positive now reads warm in every league."
+  },
+  {
+   "date": "2026-07-26",
+   "title": "Clutch decisions and team defence",
+   "body": "Two layers added: the end-game two-versus-three choice scored on expectation at the moment of the decision, and team defence in three pillars ordered by measured reliability. The player version of team defence was built and rejected at 0.348 split-half reliability."
+  },
+  {
+   "date": "2026-07-24",
+   "title": "Lineups and RAPM",
+   "body": "Regularized adjusted plus-minus per player-season, plus five-man lineups measured against the sum of their parts. Reported honestly: RAPM beats a sum-of-parts baseline out of sample in all six seasons, but lineup synergy does not persist."
+  },
+  {
+   "date": "2026-07-13",
+   "title": "EuroCup and the WNBA",
+   "body": "Two leagues added, taking the site to nine."
+  },
+  {
+   "date": "2026-07-12",
+   "title": "Greek Basket League and ABA Liga",
+   "body": "Two more leagues. Liga Basket Serie A coordinates were also corrected: they are true-court and flip at halftime, which had put roughly 40% of its three-pointers in the backcourt."
+  },
+  {
+   "date": "2026-07-11",
+   "title": "Lega Basket Serie A and Basketball Bundesliga",
+   "body": "Two leagues added. Bundesliga starts at 2023-24 because earlier seasons did not tag the shooter on missed shots, which makes per-player shot value impossible."
+  },
+  {
+   "date": "2026-07-10",
+   "title": "NBA, EuroLeague and Liga ACB on one site",
+   "body": "The first combined release: one site, three leagues, a league toggle that reskins the interface and swaps the player database."
+  }
+ ]
+}

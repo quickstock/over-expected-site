@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import type { CSSProperties } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useData, useLeague } from "../data";
-import { leagueDef } from "../leagues";
+import { datedPart, refereesPath } from "../routes";
+import { leagueDef, type League } from "../leagues";
 import { useTitle } from "../lib/useTitle";
 import { int, signed } from "../lib/format";
 import SegmentedControl from "../components/SegmentedControl";
@@ -13,7 +14,7 @@ const SCRIPT_LABEL: Record<string, { label: string; sub: string }> = {
   blowout: { label: "Blowout", sub: "13 or more" },
 };
 
-function NotFound({ minGames }: { minGames: number }) {
+function NotFound({ minGames, league }: { minGames: number; league: League }) {
   return (
     <div className="mx-auto max-w-xl px-5 py-28 text-center sm:px-8">
       <p className="font-display text-2xl font-semibold text-ink">
@@ -23,7 +24,7 @@ function NotFound({ minGames }: { minGames: number }) {
         Profiles require at least {minGames} games in a season.
       </p>
       <Link
-        to="/referees"
+        to={refereesPath(league)}
         className="mt-8 inline-block rounded-md bg-ink px-5 py-2.5 font-display text-sm font-medium text-paper transition-opacity duration-150 hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       >
         All referees
@@ -148,7 +149,7 @@ export default function Referee() {
   useTitle(prof ? `${prof.name} · Over Expected` : "Over Expected");
 
   if (!prof || !season || !detail)
-    return <NotFound minGames={leagueDef(league).refMinGames} />;
+    return <NotFound minGames={leagueDef(league).refMinGames} league={league} />;
 
   const setSeason = (s: string) => {
     const next = new URLSearchParams(params);
@@ -177,7 +178,7 @@ export default function Referee() {
   return (
     <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-14">
       <Link
-        to={`/referees?season=${encodeURIComponent(season)}`}
+        to={refereesPath(league, datedPart(season, data.meta.defaultSeason))}
         className="font-display text-sm text-ink-soft transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       >
         ← Referees
@@ -311,7 +312,7 @@ export default function Referee() {
 
       <p className="mt-8">
         <Link
-          to={`/referees?season=${encodeURIComponent(season)}`}
+          to={refereesPath(league, datedPart(season, data.meta.defaultSeason))}
           className="font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           See every official →

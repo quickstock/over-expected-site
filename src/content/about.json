@@ -1,0 +1,16 @@
+{
+ "generated": "2026-08-19",
+ "whatItIs": "Over Expected measures what a basketball shot is really worth. Every attempt is priced by what shots like it are worth given where and in what context it was taken; a player's number is the gap between what he produced and what those looks were worth, expressed per 100 possessions and measured against each season's own league rate rather than a flat average.",
+ "why": "Field goal percentage and true shooting treat every attempt as interchangeable. They cannot tell a player who takes hard shots and makes them from one who takes easy shots and makes them. The three lenses here separate the shots from the shooting from the free throws they draw.",
+ "who": "I'm Kevin Krajnc, a sports analyst who has spent nearly two years working with NBA play-by-play data. I built Over Expected because conventional shooting statistics treat every attempt as interchangeable, and they are not.",
+ "howItsBuilt": "Two Python pipelines pull public play-by-play and export static JSON; the site is a React front end that only reads those files. It never queries a database at request time, which is why every page is fast and every number is reproducible from the published data.",
+ "limits": [
+  "The numbers blend playstyle, contact-seeking skill and officiating without separating them.",
+  "They are not evidence of referee bias, and no player-by-official split is published.",
+  "The expected-points model is fit separately per league, so figures are not comparable across leagues.",
+  "Openness is not in the public data, so a consistently unguarded shooter beats his expectation for reasons the number credits to him.",
+  "Lineup synergy does not persist out of sample and is presented as description, not forecast."
+ ],
+ "contact": "kevinkrajnc@gmail.com",
+ "licence": "The data is published under CC BY 4.0. Cite it as: Over Expected (2026). Points over expected per 100 possessions. https://overexpected.com"
+}

@@ -1,18 +1,30 @@
 /**
  * A player's face, where a face exists to show.
  *
- * NBA and WNBA headshots are hotlinked from the leagues' own public CDNs
- * (cdn.nba.com / cdn.wnba.com), never stored or re-served: the id in our
- * data IS the id in their URL scheme, retired players resolve to real
- * photos, and unknown ids resolve to the league's own gray silhouette. No
- * European league publishes a URL-addressable headshot per player id, so
- * those leagues render the fallback: the letter chip (compare page) or
- * nothing at all (player header), depending on where the face would sit.
+ * Two resolution paths, declared per league in the registry as `headshots`:
+ *
+ *   "id"  — the NBA and WNBA serve a headshot at a URL built from the very id
+ *           we store, so the URL is computed and nothing is fetched or stored.
+ *   "map" — every other league keys its photos on a media UUID (EuroLeague,
+ *           EuroCup), a hashed media path (Liga ACB), a Genius asset hash (Greek
+ *           Basket League), or a 24-character asset key (Lega Basket Serie A).
+ *           None of those can be derived from a player id, so
+ *           `headshots-{CODE}.json` carries the join and is fetched lazily, only
+ *           on the routes that show a face.
+ *
+ * Nothing is ever stored or re-served: every URL points at the league's own
+ * public CDN. Coverage is partial by nature (99% EuroLeague down to 64% Greek
+ * Basket League, where a third of the Genius photo hosts no longer resolve), and
+ * a miss falls back to the letter chip or to nothing, never to a broken image.
+ * The BBL is absent on purpose: its portrait endpoint answers 200 for any id
+ * with the same placeholder silhouette.
  */
 import { useState } from "react";
-import type { League } from "../leagues";
+import { useHeadshots } from "../data";
+import { LEAGUE_DEFS, type League } from "../leagues";
 import { lastName } from "../lib/format";
 
+/** The URL for leagues that serve a headshot at an id-derived address. */
 export function headshotUrl(league: League, id: string): string | null {
   if (league === "NBA")
     return `https://cdn.nba.com/headshots/nba/latest/260x190/${id}.png`;
@@ -37,7 +49,17 @@ export default function Headshot({
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  const url = headshotUrl(league, id);
+  const mode = LEAGUE_DEFS[league].headshots;
+  // Only "map" leagues fetch anything, and only from the routes that mount a
+  // face. The hook runs unconditionally with a null argument otherwise, because
+  // a conditional hook would change the hook count between leagues.
+  const maps = useHeadshots(mode === "map" ? league : null);
+  const url =
+    mode === "id"
+      ? headshotUrl(league, id)
+      : maps.status === "ready"
+        ? maps.data.urls[id] ?? null
+        : null;
 
   if (!url || failed) {
     if (fallback === "none") return null;
@@ -55,9 +77,14 @@ export default function Headshot({
     <span
       className={`block shrink-0 overflow-hidden rounded-full border border-line bg-wash ${className}`}
     >
+      {/* Intrinsic size stated so the box never reflows once the image lands:
+          the container sizes it, but without these the browser has no aspect
+          ratio to reserve. */}
       <img
         src={url}
         alt=""
+        width={200}
+        height={200}
         loading="lazy"
         onError={() => setFailed(true)}
         className="h-full w-full object-cover object-top"

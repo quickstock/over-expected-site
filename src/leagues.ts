@@ -63,6 +63,14 @@ export interface LeagueDef {
   hasStory?: boolean;
   /** Data-credit line on the open-data page. */
   sourceCredit: string;
+  /** How a player's face resolves, if at all.
+      "id"  — the league's CDN serves it at a URL built from the id we store
+              (NBA, WNBA), so nothing is stored on our side.
+      "map" — the URL is a media UUID, hash or asset key that cannot be derived
+              from a player id, so `headshots-{CODE}.json` carries the join.
+      absent — no source found. The BBL's portrait endpoint answers 200 for any
+              id with the same placeholder SVG, so there is nothing to map. */
+  headshots?: "id" | "map";
   /** Platform analytical layers this league ships beyond the base OE
       lenses; absent = base only. Gates nav items, routes, and player-page
       sections per league. */
@@ -116,6 +124,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     hasStory: true,
     sourceCredit:
       "Underlying play-by-play and tracking aggregates are NBA.com data.",
+    headshots: "id",
     layers: { lineups: true, value: true, coaching: true, defense: true },
   },
   EL: {
@@ -128,6 +137,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     brand: { l: 0.62, c: 0.195, h: 45 },
     ...EURO_DEFAULTS,
     sourceCredit: "Underlying play-by-play is EuroLeague public data.",
+    headshots: "map",
   },
   EUC: {
     code: "EUC",
@@ -139,6 +149,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     brand: { l: 0.6, c: 0.16, h: 95 },
     ...EURO_DEFAULTS,
     sourceCredit: "Underlying play-by-play is EuroCup public data.",
+    headshots: "map",
   },
   ACB: {
     code: "ACB",
@@ -150,6 +161,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     brand: { l: 0.52, c: 0.19, h: 15 },
     ...EURO_DEFAULTS,
     sourceCredit: "Underlying play-by-play is Liga ACB public data.",
+    headshots: "map",
   },
   BSL: {
     code: "BSL",
@@ -174,6 +186,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     ...EURO_DEFAULTS,
     sourceCredit:
       "Underlying play-by-play is Lega Basket Serie A public data.",
+    headshots: "map",
   },
   PROA: {
     code: "PROA",
@@ -197,6 +210,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     ...EURO_DEFAULTS,
     sourceCredit:
       "Underlying play-by-play is Greek Basket League public data.",
+    headshots: "map",
   },
   BBL: {
     code: "BBL",
@@ -220,6 +234,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     brand: { l: 0.53, c: 0.11, h: 180 },
     ...EURO_DEFAULTS,
     sourceCredit: "Underlying play-by-play is ABA Liga public data.",
+    headshots: "map",
   },
   WNBA: {
     code: "WNBA",
@@ -238,6 +253,7 @@ export const LEAGUE_DEFS: Record<League, LeagueDef> = {
     refMinGames: 10,
     sourceCredit:
       "Underlying play-by-play is official stats.nba.com (WNBA) data.",
+    headshots: "id",
   },
 };
 
