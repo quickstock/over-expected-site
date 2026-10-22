@@ -99,6 +99,11 @@ export function leaguePath(lg: League, lens: string, season?: string): string {
 export function refereesPath(lg: League, season?: string): string {
   return `/referees/${lg}${seg(season)}`;
 }
+/** The weekly shooting post. The season-less rule applies to weeks too: the
+    latest week lives at /weekly, every week (latest included) at its Monday. */
+export function weeklyPath(week?: string): string {
+  return week ? `/weekly/${week}` : "/weekly";
+}
 
 /* ------------------------------------------------------- league from the URL */
 

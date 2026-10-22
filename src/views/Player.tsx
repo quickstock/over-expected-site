@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useLeagueData, usePlayerChunk, useRapm } from "../data";
-import { ACTIVE_LEAGUES, ftNoun, leagueDef, type League } from "../leagues";
+import { ACTIVE_LEAGUES, LEAGUE_LABEL, ftNoun, leagueDef, type League } from "../leagues";
 import type {
   FoulBreakdown,
   GameLine,
@@ -24,6 +24,8 @@ import PercentileSliders from "../components/player/PercentileSliders";
 import CareerStrip from "../components/player/CareerStrip";
 import DefenseLens from "../components/player/DefenseLens";
 import Headshot from "../components/Headshot";
+import EuroLeagueProjection from "../components/player/EuroLeagueProjection";
+import SimilarElsewhere from "../components/player/SimilarElsewhere";
 
 const FORM_WINDOWS = ["5", "10", "15", "20"];
 
@@ -657,7 +659,7 @@ export default function Player() {
       {row.sper100 !== null && row.spct !== null && (
         <p className="mt-10 max-w-2xl text-sm leading-relaxed text-ink-soft">
           <span className="font-display font-semibold text-ink">
-            Style-adjusted:
+            Tracking cross-check:
           </span>{" "}
           <span
             className="font-mono tnum"
@@ -665,14 +667,14 @@ export default function Player() {
           >
             {signed(row.sper100, 1)}
           </span>{" "}
-          per 100 ({ordinal(Math.round(row.spct))} percentile), against
-          what his attack profile of drives, paint and post touches predicts
-          rather than against the league.{" "}
+          per 100 ({ordinal(Math.round(row.spct))} percentile) against what
+          his drives, paint and post touches predict, the same question as
+          FTAOE answered from NBA tracking data instead of shot locations.{" "}
           <Link
             to="/methodology"
             className="underline underline-offset-2 transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
-            How it differs
+            How they compare
           </Link>
           .
         </p>
@@ -730,6 +732,14 @@ export default function Player() {
         (sv ? (
           <>
             <ShotQualityPanel lens={lens} season={season} sv={sv} pool={svPool} />
+            {lens === "making" && data.meta.translation && (
+              <EuroLeagueProjection
+                sv={sv}
+                t={data.meta.translation}
+                league={LEAGUE_LABEL[league]}
+                season={season}
+              />
+            )}
 
             {/* where the shots come from, directly under the rankings */}
             <CourtSection
@@ -836,6 +846,8 @@ export default function Player() {
         ))}
 
 
+      <SimilarElsewhere league={league} id={row.id} />
+
       <p className="mt-16 border-t border-line pt-6">
         <Link
           to={boardPath(league, DEFAULT_BOARD_LENS, datedPart(season, data.meta.defaultSeason))}
@@ -848,6 +860,12 @@ export default function Player() {
           className="ml-6 font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           Compare him →
+        </Link>
+        <Link
+          to={`/player/${league}/${row.id}/report?season=${encodeURIComponent(season)}`}
+          className="ml-6 font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+        >
+          Scouting report (PDF) →
         </Link>
       </p>
     </div>

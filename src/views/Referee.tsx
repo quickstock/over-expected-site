@@ -296,9 +296,9 @@ export default function Referee() {
       )}
 
       <p className="mt-14 border-t border-line pt-6 max-w-prose text-xs leading-relaxed text-ink-faint">
-        Descriptive, league-level only. Crew tendency is one of the context
-        features the expected-FTA model already adjusts for, and assignments
-        are not random: workloads, slates and the games an official is given
+        Descriptive, league-level only. Player numbers are not adjusted for
+        individual crews, and assignments are not random: workloads, slates
+        and the games an official is given
         all differ. This site deliberately does not publish player-by-official
         splits.{" "}
         <Link

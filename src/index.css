@@ -111,3 +111,18 @@ button {
   content-visibility: auto;
   contain-intrinsic-size: auto 50px;
 }
+
+/* The one-page scouting report (/player/:lg/:id/report) is printed to PDF from
+   the browser. A4 with tight margins; keep the colours the page draws. */
+@media print {
+  @page {
+    size: A4;
+    margin: 11mm 12mm;
+  }
+  html,
+  body {
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

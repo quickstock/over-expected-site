@@ -239,7 +239,7 @@ function card(row) {
                     { type: "div", props: { style: { fontFamily: "JetBrains Mono", fontSize: 150, color: deltaColor(row.per100, theme) }, children: signed(row.per100) } },
                     { type: "div", props: { style: { display: "flex", flexDirection: "column", fontFamily: "JetBrains Mono", fontWeight: 400, fontSize: 27, color: SOFT, lineHeight: 1.5 }, children: [
                       { type: "div", props: { children: "free throws per 100 possessions" } },
-                      { type: "div", props: { children: "over the league-average rate" } },
+                      { type: "div", props: { children: "over what his shots usually draw" } },
                     ] } },
                   ],
                 },
@@ -958,18 +958,19 @@ shell({
     parts: [
       answer(
         "How do you measure shot quality in basketball?",
-        "Every shot is priced by what shots like it are worth: location, context " +
-          "and the situation it came from, fitted on possession-level play-by-play " +
-          "and anchored to each season's own league rate. A player's number is the " +
-          "gap between what he produced and what those looks were worth, which is " +
-          "why it is called over expected.",
+        "Every shot is priced by what shots like it are worth: its make " +
+          "probability from location and context, and the free throws its zone " +
+          "draws league-wide that season. A player's number is the gap between " +
+          "what he produced and what those looks were worth, which is why it is " +
+          "called over expected.",
       ),
       "<p>The model is leak-free: nothing that happens after a shot is an input to " +
         "valuing it, and the fit is cross-validated by season so a player's own " +
         "results never price his own shots.</p>",
-      "<p><strong>What this does not measure:</strong> it cannot separate " +
-        "playstyle from contact-seeking skill from officiating, and it is not " +
-        "evidence of bias in any direction.</p>",
+      "<p><strong>What this does not measure:</strong> with shot location taken " +
+        "out it still cannot separate contact-seeking skill from the kind of shot " +
+        "within a zone or from officiating, and it is not evidence of bias in any " +
+        "direction.</p>",
     ],
   }),
   ld: [
@@ -978,10 +979,10 @@ shell({
       author: { "@id": AUTHOR["@id"] }, publisher: { "@id": ORG["@id"] },
       mainEntityOfPage: `${BASE}/methodology` },
     faq("How do you measure shot quality in basketball?",
-        "Every shot is priced by what shots like it are worth given location and " +
-        "context, fitted on possession-level play-by-play and anchored to each " +
-        "season's own league rate. A player's number is the gap between what he " +
-        "produced and what those looks were worth."),
+        "Every shot is priced by what shots like it are worth: its make " +
+        "probability from location and context, and the free throws its zone " +
+        "draws league-wide that season. A player's number is the gap between what " +
+        "he produced and what those looks were worth."),
     breadcrumbs("/methodology", ["Methodology"]),
   ],
   path: "/methodology",
@@ -1136,7 +1137,7 @@ for (const lg of LEAGUES) {
         ? "Shot quality, shot-making and drawn free throws in one number."
         : lens.key === "making"
           ? "Shot quality is already priced out, so this is shooting alone."
-          : "Measured against the season's own league rate, not a flat average.";
+          : "Measured against what his shot locations usually draw, so rim volume is taken out.";
     const img = `board-${lg}-${lens.slug}.png`;
     const all = Object.values(d.shotValue ?? {}).flat();
     const values =
@@ -1449,10 +1450,10 @@ for (const lg of LEAGUES) {
                   rows,
                 })
               : "",
-            `<p>Descriptive and league-level only. Crew tendency is one of the ` +
-              `context features the expected-free-throw model already adjusts for, ` +
-              `assignments are not random, and this site deliberately publishes no ` +
-              `player-by-official splits. It does not show referee bias.</p>`,
+            `<p>Descriptive and league-level only. Player numbers are not ` +
+              `adjusted for individual crews, assignments are not random, and this ` +
+              `site deliberately publishes no player-by-official splits. It does ` +
+              `not show referee bias.</p>`,
           ],
         });
       })(),
@@ -1537,9 +1538,8 @@ for (const lg of LEAGUES) {
               }),
           }),
           `<p><strong>What this does not measure:</strong> assignments are not ` +
-            `random, crew tendency is already one of the context features the ` +
-            `expected-free-throw model adjusts for, and no player-by-official split ` +
-            `is published. It is not evidence of bias.</p>`,
+            `random, player numbers are not adjusted for individual crews, and no ` +
+            `player-by-official split is published. It is not evidence of bias.</p>`,
         ],
       }),
     });
@@ -2552,6 +2552,149 @@ contentUrls.push(`${BASE}/about`);
 // data did. Google treats an inaccurate lastmod as a reason to stop trusting all
 // of them, so the base sections carry none. Adding `generated` to the base
 // exports is a one-line pipeline change that would fix that.
+// ---- the weekly shooting post. weekly-index.json lists every published week,
+// newest first; weekly-{week}.json holds each league's lists. Same canonical
+// rule as seasons: the latest week is /weekly, and its dated twin points there.
+const weeklyUrls = [];
+const weeklyFeed = [];
+const weeklyIndex = layerJson("weekly-index.json")?.weeks ?? [];
+const firstLastName = (n) => {
+  const i = n.indexOf(",");
+  return i > 0 ? `${n.slice(i + 1).trim()} ${n.slice(0, i).trim()}` : n;
+};
+const weekRangeLabel = (week) => {
+  const start = new Date(`${week}T00:00:00Z`);
+  const end = new Date(start.getTime() + 6 * 86400000);
+  const md = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const same = start.getUTCMonth() === end.getUTCMonth();
+  return `${md(start)} – ${same ? end.getUTCDate() : md(end)}, ${end.getUTCFullYear()}`;
+};
+const matchupOf = (r) => `${r.team} ${r.home ? "vs" : "at"} ${r.opp}`;
+const shotLine = (r) =>
+  `${r.fgm} of ${r.fga} for ${r.pts} points from the field on shots worth ${r.xpts.toFixed(1)}`;
+
+function weeklyCard(e) {
+  const r = e.best;
+  const theme = THEME[r.lg] ?? THEME.NBA;
+  return {
+    type: "div",
+    props: {
+      style: {
+        width: 1200, height: 630, display: "flex", flexDirection: "column",
+        backgroundColor: PAPER, padding: 72, justifyContent: "space-between",
+      },
+      children: [
+        {
+          type: "div",
+          props: {
+            style: { display: "flex", justifyContent: "space-between", alignItems: "baseline" },
+            children: [
+              { type: "div", props: { style: { fontFamily: "Bricolage Grotesque", fontSize: 34, color: INK }, children: "OE" } },
+              { type: "div", props: { style: { fontFamily: "JetBrains Mono", fontWeight: 400, fontSize: 26, color: FAINT }, children: `Shooting game of the week · ${weekRangeLabel(e.week)}` } },
+            ],
+          },
+        },
+        {
+          type: "div",
+          props: {
+            style: { display: "flex", flexDirection: "column", gap: 6 },
+            children: [
+              { type: "div", props: { style: { fontFamily: "Bricolage Grotesque", fontSize: 64, color: INK }, children: firstLastName(r.name) } },
+              {
+                type: "div",
+                props: {
+                  style: { display: "flex", alignItems: "baseline", gap: 28 },
+                  children: [
+                    { type: "div", props: { style: { fontFamily: "JetBrains Mono", fontSize: 150, color: theme.warm }, children: signed(r.oe) } },
+                    { type: "div", props: { style: { display: "flex", flexDirection: "column", fontFamily: "JetBrains Mono", fontWeight: 400, fontSize: 27, color: SOFT, lineHeight: 1.5 }, children: [
+                      { type: "div", props: { children: "points over expected" } },
+                      { type: "div", props: { children: "from the field" } },
+                    ] } },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+        {
+          type: "div",
+          props: {
+            style: { display: "flex", justifyContent: "space-between", fontFamily: "JetBrains Mono", fontWeight: 400, fontSize: 24, color: FAINT },
+            children: [
+              { type: "div", props: { children: `${r.fgm} of ${r.fga} · ${r.pts} points on shots worth ${r.xpts.toFixed(1)}` } },
+              { type: "div", props: { children: `${matchupOf(r)} · ${LEAGUE_LABEL[r.lg]}` } },
+            ],
+          },
+        },
+      ],
+    },
+  };
+}
+
+for (const [i, e] of weeklyIndex.entries()) {
+  const detail = layerJson(`weekly-${e.week}.json`);
+  const range = weekRangeLabel(e.week);
+  const path = `/weekly/${e.week}`;
+  const img = `weekly-${e.week}.png`;
+  await renderPng(weeklyCard(e), join(DIST, "og", img));
+  const best = e.best, worst = e.worst;
+  const page = (p, canonical) => shell({
+    title: `Best shooting games, week of ${range}`,
+    description: fit([
+      `${firstLastName(best.name)} went ${best.fgm} of ${best.fga} on shots worth ${best.xpts.toFixed(1)} points, ${signed(best.oe)} over expected, the week's best.`,
+      `The coldest: ${firstLastName(worst.name)}, ${signed(worst.oe)}.`,
+      `${e.leagues.length} leagues, ${e.games} games.`,
+    ]),
+    path: p, canonical, image: img, type: "article",
+    ld: [
+      AUTHOR,
+      breadcrumbs(path, ["This week", range]),
+      { "@type": "Article", headline: `Best shooting games, week of ${range}`,
+        author: { "@id": AUTHOR["@id"] }, publisher: { "@id": ORG["@id"] },
+        datePublished: e.week, mainEntityOfPage: `${BASE}${canonical}` },
+    ],
+    block: staticBlock({
+      h1: `${esc(firstLastName(best.name))} shot ${best.fgm} of ${best.fga}`,
+      parts: [
+        answer(
+          `Who had the best shooting game of the week of ${range}?`,
+          esc(
+            `${firstLastName(best.name)} (${matchupOf(best)}, ${LEAGUE_LABEL[best.lg]}) went ` +
+              `${shotLine(best)}, ${signed(best.oe)} over expected. The coldest game was ` +
+              `${firstLastName(worst.name)} (${matchupOf(worst)}, ${LEAGUE_LABEL[worst.lg]}): ` +
+              `${shotLine(worst)}, ${signed(worst.oe)}.`,
+          ),
+        ),
+        ...LEAGUES.filter((lg) => detail?.leagues?.[lg]).map((lg) =>
+          table({
+            caption: `${LEAGUE_LABEL[lg]}: hottest and coldest shooting games, week of ${range}`,
+            cols: [{ label: "Player" }, { label: "Game" }, { label: "FG" },
+                   { label: "Points vs expected", numeric: true },
+                   { label: "Over expected", numeric: true }],
+            rows: [...detail.leagues[lg].over, ...detail.leagues[lg].under].map((r) => [
+              r.name, `${matchupOf(r)}, ${r.date}`, `${r.fgm}/${r.fga}`,
+              `${r.pts} vs ${r.xpts.toFixed(1)}`, signed(r.oe)]),
+          })),
+      ],
+    }),
+  });
+  if (i === 0) {
+    page("/weekly", "/weekly");
+    weeklyUrls.push(`${BASE}/weekly`);
+  }
+  page(path, i === 0 ? "/weekly" : path);
+  if (i > 0) weeklyUrls.push(`${BASE}${path}`);
+  const published = new Date(`${e.week}T00:00:00Z`);
+  published.setUTCDate(published.getUTCDate() + 7);
+  weeklyFeed.push({
+    id: `${BASE}${path}`,
+    url: `${BASE}${path}`,
+    title: `Best shooting games, week of ${range}`,
+    summary: `${firstLastName(best.name)} went ${shotLine(best)}, ${signed(best.oe)} over expected.`,
+    date_published: published.toISOString(),
+  });
+}
+
 // The canonical URL list. Bare /leaderboard and /league are absent because they
 // are 301s now, and the dated current-season URLs are absent because they
 // canonical to their evergreen twin: a sitemap should list canonicals only.
@@ -2562,6 +2705,7 @@ const urls = [
   ...refUrls.sort(),
   ...glossaryUrls.sort(),
   ...contentUrls.sort(),
+  ...weeklyUrls,
   ...LINEUP_LEAGUES.map((lg) => `${BASE}/lineups/${lg}`),
   ...(LINEUP_LEAGUES.length ? [`${BASE}/methodology/lineups`] : []),
   ...VALUE_LEAGUES.map((lg) => `${BASE}/value/${lg}`),
@@ -2583,6 +2727,7 @@ const SECTIONS = [
   ["lineups", (u) => u.includes("/lineups/") || u.includes("/value/")],
   ["glossary", (u) => u.includes("/glossary")],
   ["explainers", (u) => u.includes("/metrics") || u.includes("/changelog") || u.includes("/about")],
+  ["weekly", (u) => u.includes("/weekly")],
   ["core", () => true],
 ];
 
@@ -2700,6 +2845,7 @@ const feedItems = [
     };
   })
   .filter(Boolean)
+  .concat(weeklyFeed)
   .sort((a, b) => (a.date_published < b.date_published ? 1 : -1));
 
 writeFileSync(

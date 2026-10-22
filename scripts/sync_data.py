@@ -20,6 +20,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from build_profiles import build as build_profiles
+
 HERE = Path(__file__).resolve().parent
 SITE = HERE.parent
 OE = SITE.parent
@@ -127,6 +129,40 @@ def copy_layers() -> int:
     return n
 
 
+def build_weekly() -> int:
+    """The weekly shooting post. Each pipeline writes weekly-{LG}.json (a
+    league's best and worst shooting games per Monday-keyed week); this
+    assembles them into weekly-index.json (every week with its cross-league
+    hottest and coldest game, small enough for the homepage) and one
+    weekly-{week}.json per week with every league's lists."""
+    for old in PUBLIC.glob("weekly-*.json"):
+        old.unlink()
+    by_week: dict = {}
+    for src in sorted(_NBA_PUBLIC.glob("weekly-*.json")) + sorted(
+            _EURO.glob("weekly-*.json")):
+        f = json.loads(src.read_text())
+        for week, w in f["weeks"].items():
+            by_week.setdefault(week, {})[f["league"]] = w
+    index = []
+    for week in sorted(by_week, reverse=True):
+        leagues = by_week[week]
+        tagged = [dict(r, lg=lg) for lg, w in leagues.items()
+                  for r in w["over"] + w["under"]]
+        index.append({
+            "week": week,
+            "leagues": sorted(leagues),
+            "games": sum(w["games"] for w in leagues.values()),
+            "best": max(tagged, key=lambda r: r["oe"]),
+            "worst": min(tagged, key=lambda r: r["oe"]),
+        })
+        (PUBLIC / f"weekly-{week}.json").write_text(json.dumps(
+            {"week": week, "leagues": leagues}, separators=(",", ":"),
+            ensure_ascii=False))
+    (PUBLIC / "weekly-index.json").write_text(json.dumps(
+        {"weeks": index}, separators=(",", ":"), ensure_ascii=False))
+    return len(index)
+
+
 def main():
     PUBLIC.mkdir(parents=True, exist_ok=True)
     total_rows = 0
@@ -142,8 +178,10 @@ def main():
             f" + {chunks} player chunks"
         )
     layers = copy_layers()
+    weeks = build_weekly()
+    build_profiles(PUBLIC, [c for c in SOURCES if (PUBLIC / f"data-{c}.json").exists()])
     print(f"done: {total_rows} leaderboard rows across leagues -> {PUBLIC}"
-          f" (+{layers} layer files)")
+          f" (+{layers} layer files, {weeks} weekly posts)")
 
 
 if __name__ == "__main__":

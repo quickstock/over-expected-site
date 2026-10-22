@@ -128,6 +128,7 @@ step "NBA possession target"   $PY build_possession_target_v3.py
 step "NBA training features"   $PY build_training_possessions_v2.py
 step "NBA score margin"        $PY backfill_score_margin.py
 step "NBA train xFTA"          $PY train_possession_v4_context.py
+step "NBA diet expectation"    $PY build_diet_expected.py
 step "NBA FTAOE board"         $PY build_possession_leaderboard_clean.py
 step "NBA style baseline"      $PY build_style_adjusted.py
 step "NBA player FT%"          $PY build_player_ft.py
@@ -135,6 +136,7 @@ step "NBA shot value"          $PY shot_value.py
 step "NBA per-shot xFG"        $PY build_shots_xfg.py
 step "NBA export"              $PY export_site_data.py
 step "NBA EXPORT GATE"         $PY scripts/validate_export.py
+step "NBA weekly post"         $PY export_weekly.py
 
 # ---------------------------------------------------------------- NBA layers
 # Rotations are optional (build_stints falls back to the pbp sub timeline)
@@ -158,10 +160,13 @@ step "NBA team defence export" $PY export_defense.py
 cd "$EURO"
 step "Euro build tables"       $PY build_tables.py
 step "Euro possessions"        $PY build_possessions.py
+step "Euro diet expectation"   $PY build_diet_expected.py
 step "Euro train xFTA"         $PY train_xfta.py
 step "Euro shot value"         $PY shot_value.py
+step "Euro EL translation"     $PY build_translation.py
 step "Euro VALIDATION GATE"    $PY validate.py
 step "Euro export"             $PY export_site_data.py
+step "Euro weekly post"        $PY export_weekly.py
 pull "Euro headshots"          $PY pull_headshots.py
 
 # ---------------------------------------------------------------- site
@@ -169,7 +174,13 @@ cd "$SITE"
 step "sync data"               $PY scripts/sync_data.py
 step "vercel build"            vercel build --prod --yes
 step "PREDEPLOY GATE"          $PY scripts/predeploy_gate.py
-step "deploy"                  vercel deploy --prebuilt --prod --archive=tgz --yes
+# The first prebuilt deploy of a session has twice come back a bare "Not
+# authorized" (2026-10-22) and the immediate retry succeeded both times.
+deploy() {
+  vercel deploy --prebuilt --prod --archive=tgz --yes \
+    || { sleep 10; vercel deploy --prebuilt --prod --archive=tgz --yes; }
+}
+step "deploy"                  deploy
 
 # The deploy reported success; confirm the live site serves this build's data.
 LOCAL_MD5="$(md5 -q public/data-NBA.json)"

@@ -5,9 +5,9 @@ import { useMeasure } from "../lib/useMeasure";
 import { useTitle } from "../lib/useTitle";
 
 /**
- * Calibration of the possession model: predicted vs actual shooting-foul
- * FTA rate per decile bin. Neutral ink only; this chart is not FTAOE,
- * so the diverging encoding stays out of it.
+ * Calibration of the FTAOE baseline: qualified player-seasons in deciles of
+ * expected free throws per possession (shot diet), against actual. Neutral
+ * ink only; this chart is not FTAOE, so the diverging encoding stays out.
  */
 function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
   const [wrapRef, width] = useMeasure<HTMLDivElement>();
@@ -22,8 +22,9 @@ function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
   const x = (v: number) => pad.left + ((v - lo) / (hi - lo)) * (size - pad.left - pad.right);
   const y = (v: number) => pad.top + innerH - ((v - lo) / (hi - lo)) * innerH;
 
-  // per-100 tick values inside the domain
-  const ticks = [0.15, 0.17, 0.19, 0.21].filter((t) => t >= lo && t <= hi);
+  // every 5 per 100 inside the domain
+  const ticks: number[] = [];
+  for (let t = Math.ceil(lo * 20) / 20; t <= hi; t += 0.05) ticks.push(t);
 
   return (
     <div ref={wrapRef} className="max-w-[420px]">
@@ -32,7 +33,7 @@ function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
           width={size}
           height={size}
           role="img"
-          aria-label="Calibration: predicted vs actual shooting-foul free throw rate per decile bin. Bins sit close to the diagonal."
+          aria-label="Calibration: expected vs actual shooting-foul free throws per 100 possessions, qualified player-seasons in deciles of expected. Bins follow the diagonal across a wide range."
         >
           {/* y = x reference */}
           <line
@@ -98,7 +99,7 @@ function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
             fill="var(--color-ink-soft)"
             className="font-mono"
           >
-            predicted FTA per 100 poss
+            expected FTA per 100 poss
           </text>
           <text
             x={12}
@@ -120,7 +121,7 @@ function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
               r={4}
               fill="var(--color-ink)"
             >
-              <title>{`decile ${i + 1}: predicted ${(b.pred * 100).toFixed(1)}, actual ${(b.actual * 100).toFixed(1)} per 100 (${int(b.n)} possessions)`}</title>
+              <title>{`decile ${i + 1}: expected ${(b.pred * 100).toFixed(1)}, actual ${(b.actual * 100).toFixed(1)} per 100 (${int(b.n)} player-seasons)`}</title>
             </circle>
           ))}
         </svg>
@@ -143,6 +144,16 @@ export default function MethodologyNBA() {
   const { meta, calibration } = data;
   const seasons = meta.seasons;
   const paddingK = meta.reliability.paddingK ?? 0;
+  const c = meta.confounds;
+  const rates = meta.dietRates ?? {};
+  // the provisional season's few games give noisy rates; stop at the default
+  const rateSeasons = seasons.filter((s) => rates[s] && s <= meta.defaultSeason);
+  const yoyN = meta.reliability.yoyPairs.length
+    ? Math.round(
+        meta.reliability.yoyPairs.reduce((a, p) => a + p.n, 0) /
+          meta.reliability.yoyPairs.length,
+      )
+    : 0;
 
   const calLo = calibration[0];
   const calHi = calibration[calibration.length - 1];
@@ -155,9 +166,11 @@ export default function MethodologyNBA() {
       </h1>
       <p className="mt-4 text-base leading-relaxed text-ink-soft sm:text-lg">
         FTAOE, free throw attempts over expected, is how many shooting-foul
-        free throws a player draws per 100 possessions, compared with the
-        league-average rate. FTAOE = actual FTA − expected FTA; the per-100
-        version divides by the possessions a player finished.
+        free throws a player draws per 100 possessions beyond what his shot
+        locations predict. FTAOE = actual FTA minus expected FTA, where
+        expected is what a league-average player would have drawn from the
+        same shots; the per-100 version divides by the possessions a player
+        finished.
       </p>
 
       <H2>What counts as a shooting foul</H2>
@@ -192,190 +205,185 @@ export default function MethodologyNBA() {
         </p>
       </div>
 
-      <H2>The baseline</H2>
+      <H2>The baseline: where he shoots</H2>
       <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
         <p>
-          Expected FTA is the league-average shooting-foul rate times the
-          possessions a player finished, season by season:{" "}
-          {seasons.map((sn, i) => (
-            <span key={sn}>
-              <span className="font-mono tnum">
-                {meta.leagueRateBySeason[sn].toFixed(1)}
-              </span>{" "}
-              in {sn}
-              {i < seasons.length - 1 ? ", " : "."}
-            </span>
-          ))}
+          Expected FTA is what a league-average player would have drawn from
+          the same shots. Every attempt goes into one of four zones: at the
+          rim, the rest of the paint, mid-range, or three. Each zone carries
+          the league's free throws per attempt for that season, with the
+          player's own attempts left out of the league figure so he cannot
+          set his own bar. Expected FTA is his attempts in each zone times
+          that zone's rate, added up.
         </p>
         <p>
-          On top of that rate we fit a context model: a Poisson GLM (log
-          link, no interactions) on seven features that are all external to
-          the player. Four describe game state (period, seconds remaining in
-          the period, score margin, a late-game bonus proxy) and three
-          describe the situation: whether the offense is at home, the
-          opponent's shooting-foul rate, and the assigned officiating crew's
-          foul rate. The opponent and crew rates are season-specific and
-          leave-one-game-out, so a game's own outcomes never enter its own
-          features. Validation is season cross-fitting (train on five
-          seasons, predict the held-out sixth). One correction to an earlier
-          version of this page, which said every prediction was out-of-fold:
-          the <em>coefficients</em> are, but the opponent and crew rates are
-          built within each season including the held-out one, so those two
-          features are not. Rebuilt from the training seasons only they add
-          nothing at all, and the deviance reduction falls from{" "}
-          <span className="font-mono tnum">0.20%</span> to{" "}
-          <span className="font-mono tnum">0.15%</span>, which is the same
-          conclusion, arrived at honestly. Earlier versions included shot
-          location and
-          play-resolution features and looked far stronger; that strength was
-          leakage (the features encoded how the possession ended), and they
-          were removed.
+          Fouled misses need one more step. A shot that draws a foul and
+          misses is not charged as a field-goal attempt and has no location,
+          so leaving those out would understate the rim attempts of exactly
+          the players who draw the most fouls. They go back in: a three-shot
+          trip is a three-point attempt, and a two-shot trip is spread across
+          the player's own two-point zones in proportion to how often he
+          shoots there and how often and-1s happen there league-wide. Each
+          season is then scaled so the league's expected total equals its
+          actual total, which keeps FTAOE a within-season comparison. The
+          scaling factor is between 1.000 and 1.003, so the zone rates are
+          doing the work, not the scaling.
         </p>
-        <p>
-          Expected is then anchored to each season's own league rate: the
-          held-out season's predictions are scaled so their mean equals that
-          season's actual rate. Anchoring keeps FTAOE a within-season
-          comparison, which is what it claims to be.
-        </p>
-        <p>
-          This page used to explain the scaling factors as a correction for
-          rule changes, citing the 2021-22 enforcement change on
-          non-basketball moves. That explanation was wrong. The factors are
-          almost exactly{" "}
-          <span className="font-mono tnum">1.021</span> in every season, which
-          is the ratio between all possessions and the ones with an
-          attributable finisher: the model is fitted on possessions that
-          include roughly 28,600 with no finisher, which carry zero
-          shooting-foul free throws by construction and drag the fitted mean
-          down. Refitting on the attributable possessions alone moves the
-          factors to about{" "}
-          <span className="font-mono tnum">0.999</span>, and the 2021-22
-          crackdown leaves no signature in either version. The scaling was
-          fixing our own fitting universe, not the league's. That refit is
-          pending here.
-        </p>
-        <p className="border-l-2 border-line pl-4 text-ink">
-          The honest punchline: out-of-fold, the full context model (game
-          state, home court, opponent, officiating crew) reduces Poisson
-          deviance by just{" "}
-          <span className="font-mono tnum">{meta.modelLiftPct.toFixed(2)}%</span>{" "}
-          against each season's own league-average rate. We adjusted for who
-          you played, where, and who officiated, and it still barely moves.
-          FTAOE is, in practice, "versus league average", and the site
-          presents it that way.
-        </p>
-        <table className="mt-2 w-full max-w-sm border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-line text-left">
-              <th className="py-2 pr-4 font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
-                Held-out season
-              </th>
-              <th className="py-2 font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
-                Deviance reduction
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {meta.foldLifts.map((f) => (
-              <tr key={f.season} className="border-b border-line-soft">
-                <td className="py-2 pr-4 font-mono tnum">{f.season}</td>
-                <td className="py-2 font-mono tnum">{f.liftPct.toFixed(2)}%</td>
+        {rateSeasons.length > 0 && (
+          <table className="mt-2 w-full max-w-md border-collapse text-sm">
+            <caption className="pb-2 text-left text-xs text-ink-faint">
+              League free throws per attempt, by zone
+            </caption>
+            <thead>
+              <tr className="border-b border-line text-left">
+                {["Season", "Rim", "Paint", "Mid", "Three"].map((h) => (
+                  <th
+                    key={h}
+                    scope="col"
+                    className="py-2 pr-4 font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rateSeasons.map((s) => (
+                <tr key={s} className="border-b border-line-soft">
+                  <th scope="row" className="py-2 pr-4 text-left font-mono font-normal tnum">
+                    {s}
+                  </th>
+                  {(["rim", "paint", "mid", "three"] as const).map((z) => (
+                    <td key={z} className="py-2 pr-4 font-mono tnum">
+                      {rates[s][z].toFixed(3)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {rates["2020-21"] && rates["2021-22"] && (
+          <p>
+            The shape holds every year: about a third of a free throw per
+            attempt at the rim, a quarter in the paint, a tenth from
+            mid-range, a few hundredths on threes. Read down the three column
+            and the 2021-22 enforcement change on non-basketball moves shows
+            up where it should: free throws per three-point attempt fell from{" "}
+            <span className="font-mono tnum">
+              {rates["2020-21"].three.toFixed(3)}
+            </span>{" "}
+            to{" "}
+            <span className="font-mono tnum">
+              {rates["2021-22"].three.toFixed(3)}
+            </span>{" "}
+            while the rim barely moved.
+          </p>
+        )}
+        <p className="border-l-2 border-line pl-4 text-ink">
+          Why the baseline changed. Until October 2026 the expectation came
+          from game context: clock, score margin, home court, and the
+          opponent's and officiating crew's foul rates. Out-of-fold that model
+          reduced Poisson deviance by just{" "}
+          <span className="font-mono tnum">{meta.modelLiftPct.toFixed(2)}%</span>{" "}
+          against the plain league rate
+          {c?.contextRawRateCorr != null && c?.contextHeightCorr != null && (
+            <>
+              , so FTAOE correlated{" "}
+              <span className="font-mono tnum">
+                {c.contextRawRateCorr.toFixed(3)}
+              </span>{" "}
+              with raw free throws per 100 and{" "}
+              <span className="font-mono tnum">
+                {c.contextHeightCorr.toFixed(2)}
+              </span>{" "}
+              with height
+            </>
+          )}
+          . It was the free-throw rate with a constant subtracted, and partly
+          a size measure. Where a player shoots is what separates a
+          rim-runner's free throws from a driver's, so that is the baseline
+          now. The context model still sits behind the team and referee views,
+          where opponent and crew are the point.
+        </p>
       </div>
 
-      <H2>What FTAOE does not adjust for</H2>
+      <H2>What the baseline takes out, and what it leaves</H2>
       <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
         <p>
-          The section above says the context model barely moves the number.
-          Here is how little, and what stays in as a result. These figures
-          come from the same artifacts the rest of this page reads, not from
-          a description of them.
+          Measured on every qualified player-season by the same export that
+          builds the board, not asserted:
         </p>
-        {meta.confounds && (
+        {c && (
           <>
             <p>
               <strong className="font-medium">
-                It is largely a body-type measure.
+                It is no longer the raw rate.
               </strong>{" "}
               FTAOE per 100 correlates{" "}
-              <span className="font-mono tnum">
-                {meta.confounds.heightCorr.toFixed(3)}
-              </span>{" "}
-              with the finisher's height, so about{" "}
-              <span className="font-mono tnum">
-                {Math.round(meta.confounds.heightR2 * 100)}%
-              </span>{" "}
-              of its variance is height rather than anything a player does.
-              Bigs sit near the top of this board partly because they are
-              big. That is not a flaw in the fit; it is what the statistic
-              measures, and the board now says so.
+              <span className="font-mono tnum">{c.rawRateCorr.toFixed(2)}</span>{" "}
+              with plain shooting-foul free throws per 100. A big who draws a
+              lot of free throws because he lives at the rim now gets credit
+              only for what he draws beyond that.
             </p>
-            <p>
-              <strong className="font-medium">
-                It is close to the unadjusted rate.
-              </strong>{" "}
-              FTAOE correlates{" "}
-              <span className="font-mono tnum">
-                {meta.confounds.rawRateCorr.toFixed(4)}
-              </span>{" "}
-              with plain shooting-foul free throws per 100 possessions. The
-              two are also equally reliable across a season (
-              <span className="font-mono tnum">
-                {meta.confounds.rawRateFullSeasonR.toFixed(3)}
-              </span>{" "}
-              for the raw rate,{" "}
-              <span className="font-mono tnum">
-                {meta.confounds.ftaoeFullSeasonR.toFixed(3)}
-              </span>{" "}
-              for FTAOE), which means the stability quoted above belongs to
-              the underlying rate and not to the model on top of it.
-            </p>
-            <p>
-              <strong className="font-medium">
-                Adjusting for size does not rescue it.
-              </strong>{" "}
-              Refitting with height and position included does remove the
-              gradient, but the result reproduces an ordinary regression of
-              the raw rate on height and position at{" "}
-              <span className="font-mono tnum">
-                {meta.confounds.archetypeVsLinearCorr.toFixed(3)}
-              </span>
-              . Anyone wanting foul-drawing net of body type can run that
-              two-variable regression and get the same answer, so we do not
-              ship a version claiming to be more than that.
-            </p>
+            {c.heightCorr != null && c.rawHeightCorr != null && (
+              <p>
+                <strong className="font-medium">
+                  It is no longer a height measure.
+                </strong>{" "}
+                Its correlation with the finisher's height is{" "}
+                <span className="font-mono tnum">{c.heightCorr.toFixed(2)}</span>
+                , against{" "}
+                <span className="font-mono tnum">
+                  {c.rawHeightCorr.toFixed(2)}
+                </span>{" "}
+                for the raw rate. Height never went into the model; where a
+                player shoots carried it.
+              </p>
+            )}
+            {c.trackingCorr != null && (
+              <p>
+                <strong className="font-medium">
+                  Independent data agrees.
+                </strong>{" "}
+                A second version built only from NBA tracking counts (drives,
+                paint touches and post touches) correlates{" "}
+                <span className="font-mono tnum">
+                  {c.trackingCorr.toFixed(2)}
+                </span>{" "}
+                with this one. Two different descriptions of how a player
+                attacks reach the same answer.
+              </p>
+            )}
           </>
         )}
         <p className="border-l-2 border-line pl-4 text-ink">
-          Read the board as a reliable measure of how often a player draws
-          shooting fouls, adjusted to the league rate of his own season. Do
-          not read it as foul-drawing skill net of size, role or shot
-          selection. It has never measured that, and this page previously
-          left the size part unsaid.
+          What it still blends: contact craft within a zone (a downhill drive
+          and a putback are both rim attempts), officiating, and how often a
+          player is fouled in the act rather than before it. Read it as free
+          throws drawn beyond what his shot locations predict. That is a
+          narrower claim than "foul-drawing skill", and it is one the data
+          supports.
         </p>
       </div>
 
       <H2>Calibration</H2>
       <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
         <p>
-          Possessions binned into deciles by predicted rate, predicted vs
-          actual:
+          Qualified player-seasons binned into deciles by expected free
+          throws per 100, expected against actual:
         </p>
         <CalibrationChart bins={calibration} />
         <p>
-          Each dot is roughly{" "}
+          Each dot is about{" "}
           <span className="font-mono tnum">{int(calibration[0].n)}</span>{" "}
-          possessions. The bins sit near the diagonal (the model isn't
-          systematically over- or under-calling fouls), but look at the
-          x-axis: from the lowest to the highest decile it separates
-          possessions by only about{" "}
+          player-seasons. From the lowest decile to the highest, expected
+          spans{" "}
           <span className="font-mono tnum">{spreadPer100}</span> free throws
-          per 100. There is almost nothing to discriminate. That is the
-          calibration picture of a baseline, which is what this model
-          effectively is.
+          per 100 and actual follows it. The retired context baseline
+          separated possessions by about two. A baseline has to tell a
+          rim-heavy diet from a perimeter one before the gap above it means
+          anything, and this one does.
         </p>
       </div>
 
@@ -393,16 +401,19 @@ export default function MethodologyNBA() {
             r = {(meta.reliability.yoyMeanR ?? 0).toFixed(2)}
           </span>{" "}
           on average across{" "}
-          {seasons.length - 1} consecutive season pairs (
+          {meta.reliability.yoyPairs.length} consecutive season pairs (
           {meta.reliability.yoyPairs.map((p, i) => (
             <span key={p.pair} className="font-mono tnum">
               {p.r.toFixed(2)}
               {i < meta.reliability.yoyPairs.length - 1 ? ", " : ""}
             </span>
           ))}
-          ), roughly 210 repeat players per pair. It even held across the
-          2021-22 enforcement change: the league's level moved, the ordering
-          of players barely did. Foul-drawing is a skill, not noise.
+          ), about <span className="font-mono tnum">{yoyN}</span> repeat
+          players per pair. That is a little below the raw rate's own
+          stability, which is expected: shot diet is very stable from year to
+          year, and taking it out removes the most stable part. What is left
+          still repeats, so drawing fouls beyond your diet is a skill, not
+          noise.
         </p>
         <p>
           In padding terms, the stat stabilizes after about{" "}
@@ -426,28 +437,30 @@ export default function MethodologyNBA() {
         </p>
       </div>
 
-      <H2>Style-adjusted FTAOE</H2>
+      <H2>Cross-check: tracking data</H2>
       <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
         <p>
-          Player pages also show a second, labeled number that answers a
-          different question: how many shooting-foul free throws does a
-          player draw above what his attack profile predicts? The baseline
-          is a player-season Poisson model whose only inputs are exposure
-          counts from NBA tracking data: drives, paint touches, and post
-          touches per 100 possessions. It is fit the same leak-free way
-          (train on five seasons, predict the sixth, anchor to the season),
-          and the player's own free-throw outcomes on those plays are never
-          features.
+          NBA player pages also show a second, labeled number: free throws
+          drawn above what a player's attack profile predicts, where the
+          profile is drives, paint touches and post touches per 100
+          possessions from NBA tracking data. It is fit the same leak-free
+          way (train on the other seasons, predict the held-out one, anchor
+          to the season), and the player's own free-throw outcomes on those
+          plays are never inputs.
         </p>
         <p>
-          Attack profile alone explains most foul-drawing volume (predicted
-          and actual FTA correlate around 0.85 season over season). The
-          residual separates two archetypes the headline number mixes: the
-          high-volume interior player whose big FTAOE comes with enormous
-          paint volume, and the per-exposure specialist who converts each
-          drive or touch into free throws at an unusual rate. Neither
-          reading is more correct; they answer different questions, which is
-          why both numbers are shown and labeled.
+          It answers the same question as FTAOE from different evidence,
+          which is why it stays
+          {c?.trackingCorr != null && (
+            <>
+              : the two agree at{" "}
+              <span className="font-mono tnum">
+                r = {c.trackingCorr.toFixed(2)}
+              </span>
+            </>
+          )}
+          . Tracking counts exist only for the NBA, so shot location is the
+          baseline every league shares.
         </p>
       </div>
 
@@ -478,11 +491,12 @@ export default function MethodologyNBA() {
           <strong className="font-semibold">Shot value</strong> fuses the two.
           Per shot, expected points are{" "}
           <span className="font-mono text-[13px]">
-            xFG% × (2 or 3) + xFTA × 0.77
+            xFG% × (2 or 3) + expected FTA × 0.77
           </span>
-          . The headline is points over expected per 100: field goals made
-          above the look's difficulty, plus the free throws drawn above
-          expectation. Both halves credit conversion: field goals at the
+          , with expected FTA from the zone rates above. The headline is
+          points over expected per 100: field goals made above the look's
+          difficulty, plus the free throws drawn above what those shots
+          should draw. Both halves credit conversion: field goals at the
           player's actual rate, and the free throws he draws valued at his own
           season free-throw percentage (the expected attempts valued at the
           league rate, ~0.77). So a foul magnet who shoots 90% from the line
@@ -502,9 +516,9 @@ export default function MethodologyNBA() {
       <H2>What this number is not</H2>
       <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
         <p>
-          FTAOE is descriptive. A high number blends playstyle (rim pressure,
-          post touches, late-clock creation), contact-seeking skill, and
-          officiating, and this method cannot separate those three. In
+          FTAOE is descriptive. With shot location taken out, a high number
+          still blends contact-seeking skill, the kind of shot within a zone,
+          and officiating, and this method cannot separate those three. In
           particular, it does not isolate and does not prove referee bias, in
           either direction, for any player. That question stays open.
         </p>
@@ -517,8 +531,10 @@ export default function MethodologyNBA() {
           leak-free baseline can get.
         </p>
         <p>
-          On referees: the officiating crew's overall foul tendency is
-          adjusted for as context above. We deliberately do not publish
+          On referees: league-wide officiating is in the baseline through
+          each season's zone rates, but a player's individual crews are not.
+          Crew tendencies are shown on the referee pages, measured against
+          game context. We deliberately do not publish
           player-by-referee splits. With three officials per game and a few
           dozen shared games per player-referee pair, those tables are noise
           machines that read as accusations; nothing here supports a claim

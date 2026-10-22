@@ -265,7 +265,7 @@
    "slug": "ftaoe-vs-free-throw-rate",
    "title": "Free throws over expected vs free throw rate",
    "question": "How is free throws over expected different from free throw rate?",
-   "lead": "Free throw rate counts trips to the line per shot. Free throws over expected asks whether a player draws more than his situations usually produce, which separates a player who seeks contact from one who simply shoots a lot of layups.",
+   "lead": "Free throw rate counts trips to the line per shot. Free throws over expected asks whether a player draws more than his shots usually produce, zone by zone, which separates a player who seeks contact from one who simply shoots a lot of layups.",
    "ours": "free-throws-over-expected",
    "theirs": {
     "name": "Free throw rate",
@@ -275,13 +275,13 @@
    },
    "rows": [
     [
-     "Adjusts for shot context",
-     "Yes",
+     "Adjusts for where a player shoots",
+     "Yes, zone by zone",
      "No"
     ],
     [
      "Baseline",
-     "That season's own league rate",
+     "What the same shots draw league-wide that season",
      "None"
     ],
     [

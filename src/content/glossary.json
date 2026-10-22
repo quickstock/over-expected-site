@@ -1,5 +1,5 @@
 {
- "generated": "2026-08-19",
+ "generated": "2026-10-22",
  "terms": [
   {
    "slug": "points-over-expected",
@@ -7,15 +7,15 @@
    "abbr": "POE/100",
    "unit": "points per 100 possessions",
    "scope": "player",
-   "definition": "What a player adds beyond what his shots were worth. It combines the field-goal points he produces above the difficulty of the looks he took with the value of the free throws he draws above the rate those same situations usually produce.",
+   "definition": "What a player adds beyond what his shots were worth. It combines the field-goal points he produces above the difficulty of the looks he took with the value of the free throws he draws above what those same shots usually draw.",
    "formula": "POE/100 = FG points over expected /100 + (league FT% x drawn FTs over expected /100)",
    "formulaNote": "Verified against the shipped exports: the ratio of (poe100 - fgPoe100) to ftaoe100 has a median of 0.776 against a stated league FT% of 0.77.",
    "rangeOf": {
-    "min": -30.6,
-    "p10": -12.2,
+    "min": -34.8,
+    "p10": -12.9,
     "median": -0.6,
-    "p90": 11.5,
-    "max": 28.3,
+    "p90": 12.0,
+    "max": 29.9,
     "n": 1690
    },
    "howToRead": "Zero is the league. Positive means a player produced more than his shot diet and his contact were worth; negative means less. It is a rate, so a low-possession player can post an extreme figure on very little evidence.",
@@ -125,19 +125,19 @@
    "abbr": "FTAOE/100",
    "unit": "free-throw attempts per 100 possessions",
    "scope": "player",
-   "definition": "How many more or fewer free throws a player draws than the model expects from the same contexts, per 100 possessions, measured against that season's own league rate rather than a flat average.",
+   "definition": "How many more or fewer free throws a player draws than a league-average player would from the same shots, per 100 possessions. Expected comes from where he shoots: each attempt at the rim, in the paint, from mid-range or from three carries that season's league free throws per attempt in its zone.",
    "formula": "FTAOE/100 = (drawn FTA - expected FTA) / possessions x 100",
-   "formulaNote": "Verified: the shipped ftaoe equals fta minus xfta exactly, and ftaoe100 matches the leaderboard's per100 to within rounding.",
+   "formulaNote": "Verified: the shipped ftaoe equals fta minus xfta exactly, and ftaoe100 matches the leaderboard's per100 to within rounding. Fouled misses, which are not field-goal attempts, are counted back in as attempts.",
    "rangeOf": {
-    "min": -18.1,
-    "p10": -9.9,
-    "median": -0.7,
-    "p90": 9.2,
-    "max": 27.4,
+    "min": -17.9,
+    "p10": -7.2,
+    "median": -0.9,
+    "p90": 6.5,
+    "max": 19.3,
     "n": 1691
    },
-   "howToRead": "The original metric this site was built on. Positive means a player gets to the line more than his situations usually produce. In the NBA build this counts shooting-foul free throws only; the European builds count all drawn free throws.",
-   "misses": "It blends playstyle, contact-seeking skill and officiating without separating them, and it is not evidence of bias.",
+   "howToRead": "Positive means a player gets to the line more than his shot locations usually produce. A big who lives at the rim needs to draw more than the rim's rate to score well; a guard who draws fouls on jumpers scores well quickly. In the NBA build this counts shooting-foul free throws only; the European builds count all drawn free throws.",
+   "misses": "It still blends contact craft within a zone (a drive and a putback are both rim attempts) with officiating, and it is not evidence of bias. In the European leagues bonus free throws cannot be separated from fouled shots, which tilts it slightly against tall finishers.",
    "related": [
     "expected-free-throws",
     "points-over-expected",
@@ -150,18 +150,18 @@
    "abbr": "xFTA",
    "unit": "free-throw attempts",
    "scope": "player",
-   "definition": "The number of free throws the model expects a player to draw given the shots he took and the contexts he took them in.",
+   "definition": "The free throws a league-average player would draw from the shots a player took: his attempts in each zone (rim, paint, mid-range, three) times that season's league free throws per attempt there, with his own attempts left out of the league figure.",
    "formula": null,
    "rangeOf": {
-    "min": 52.5,
-    "p10": 64.6,
-    "median": 113.5,
-    "p90": 224.7,
-    "max": 345.5,
+    "min": 4.9,
+    "p10": 56.5,
+    "median": 114.0,
+    "p90": 233.5,
+    "max": 456.7,
     "n": 1691
    },
    "howToRead": "Read it next to actual attempts. The difference is the whole point of the metric.",
-   "misses": "It is a rate model, not a referee model; it does not know which official worked the game.",
+   "misses": "It knows where a shot was taken, not what kind of shot it was or who was defending, and it does not know which officials worked the game.",
    "related": [
     "free-throws-over-expected"
    ]

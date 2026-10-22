@@ -38,6 +38,14 @@ export function lastName(full: string): string {
   return parts[i];
 }
 
+/** Display order for a sentence: "Feliz, Andres" -> "Andres Feliz"; names
+    already in "First Last" order pass through. */
+export function firstLast(full: string): string {
+  const comma = full.indexOf(",");
+  if (comma <= 0) return full;
+  return `${full.slice(comma + 1).trim()} ${full.slice(0, comma).trim()}`;
+}
+
 /** Accent-insensitive lowercase key: "Jokić" -> "jokic". */
 export function searchKey(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");

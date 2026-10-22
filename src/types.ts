@@ -46,6 +46,14 @@ export interface ShotValueRow {
   ftaoe100: number;
   /** Combined points over expected per 100 possessions (the headline). */
   poe100: number;
+  /** Domestic leagues only: projected EuroLeague shot-making (pp) and the
+      range 80% of players land in (build_translation.py). */
+  elProj?: number;
+  elLo?: number;
+  elHi?: number;
+  /** When he also played EuroLeague that season: his actual shot-making there. */
+  elActual?: number;
+  elFga?: number;
 }
 
 export interface ZoneAgg {
@@ -148,22 +156,44 @@ export interface SiteData {
       paddingK?: number;
     };
     /**
-     * NBA export only. What FTAOE does *not* adjust for, measured rather than
-     * asserted. Sourced from variant_archetype_vs_linear.json and
-     * variant_raw_baseline.json so the board and the methodology cannot drift
-     * from the artifacts.
+     * What the shot-diet baseline does and does not take out, measured by the
+     * export on the qualified rows it ships. Height exists for the NBA,
+     * EuroLeague and EuroCup only; tracking and the retired context baseline's
+     * figures are NBA only.
      */
     confounds?: {
-      /** Correlation of FTAOE/100 with finisher height across player-seasons. */
-      heightCorr: number;
-      heightR2: number;
-      /** Correlation of FTAOE/100 with the unadjusted shooting-foul rate. */
+      /** FTAOE/100 vs the unadjusted free-throw rate per 100. */
       rawRateCorr: number;
-      rawRateFullSeasonR: number;
-      ftaoeFullSeasonR: number;
-      /** Adding height+position reproduces a plain linear residual at this r. */
-      archetypeVsLinearCorr: number;
+      /** FTAOE/100 vs finisher height. */
+      heightCorr: number | null;
+      /** The raw rate vs height, for contrast. */
+      rawHeightCorr: number | null;
+      /** NBA: FTAOE/100 vs the tracking-based style-adjusted version. */
+      trackingCorr?: number;
+      /** NBA: the retired context baseline's raw-rate and height r. */
+      contextRawRateCorr?: number;
+      contextHeightCorr?: number;
     };
+    /** Domestic leagues: how the EuroLeague projection is built and how well
+        it predicted out of sample (build_translation.py). */
+    translation?: {
+      K: number;
+      minFga: number;
+      nPairs: number;
+      nLeaguePairs: number;
+      step: number;
+      steps: Partial<Record<League, number>>;
+      oosRmse: number;
+      flatRmse: number;
+      naiveRmse: number;
+      rangeLo: number;
+      rangeHi: number;
+      moversN: number;
+      moversRmse: number;
+      moversFlatRmse: number;
+    };
+    /** League free throws per attempt by zone, per season: the baseline. */
+    dietRates?: Record<string, { rim: number; paint: number; mid: number; three: number }>;
   };
   leaderboard: LeaderboardRow[];
   distributions: Record<string, number[]>;
@@ -552,4 +582,59 @@ export interface HeadshotMap {
     coverage: number;
   };
   urls: Record<string, string>;
+}
+
+/** One player-game in the weekly shooting post (weekly-{week}.json). */
+export interface WeeklyRow {
+  id: string;
+  name: string;
+  team: string;
+  opp: string;
+  home: boolean;
+  date: string;
+  fgm: number;
+  fga: number;
+  /** Points scored from the field. */
+  pts: number;
+  /** What those shots were worth (xFG). */
+  xpts: number;
+  /** pts - xpts: field-goal points over expected. */
+  oe: number;
+}
+
+/** A week's lists for one league: top 3 each way and games played. */
+export interface WeeklyLeague {
+  games: number;
+  over: WeeklyRow[];
+  under: WeeklyRow[];
+}
+
+/** weekly-{week}.json: every league's lists for one Monday-keyed week. */
+export interface WeeklyWeek {
+  week: string;
+  leagues: Partial<Record<League, WeeklyLeague>>;
+}
+
+/** weekly-index.json: every published week, newest first, with its
+    cross-league hottest and coldest game. */
+export interface WeeklyIndex {
+  weeks: {
+    week: string;
+    leagues: League[];
+    games: number;
+    best: WeeklyRow & { lg: League };
+    worst: WeeklyRow & { lg: League };
+  }[];
+}
+
+/** profiles.json: one row per player (his latest qualified season), for the
+    cross-league similarity section. Row layout:
+    [league, id, name, season, team, recent (0/1), vector, display], where
+    display = [rim share, mid share, three share, shot-making pct (0-1),
+    foul-drawing pct (0-1), FGA per 100 finished possessions]. */
+export interface ProfilesFile {
+  features: string[];
+  weights: number[];
+  test: { pairs: number; medianRank: number; medianField: number; top5: number; top10pct: number };
+  rows: [League, string, string, string, string, 0 | 1, number[], number[]][];
 }

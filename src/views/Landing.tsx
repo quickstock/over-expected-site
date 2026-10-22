@@ -20,6 +20,7 @@ import Beeswarm from "../components/charts/Beeswarm";
 import ExpectedVsActual from "../components/charts/ExpectedVsActual";
 import RefStrip from "../components/charts/RefStrip";
 import TeamScatter from "../components/charts/TeamScatter";
+import WeeklyTeaser from "../components/WeeklyTeaser";
 
 function seasonShort(s: string) {
   return `'${s.slice(2, 4)}-${s.slice(5)}`;
@@ -222,7 +223,7 @@ export default function Landing() {
             season={season}
             current={data.meta.defaultSeason}
             label="Foul-drawing"
-            desc="Free throws drawn above the league's rate for the same context. The original FTAOE."
+            desc="Free throws drawn beyond what a player's shot locations predict, so rim volume and size are taken out."
             row={byFouls}
             metric={byFouls?.ftaoe100}
             count={svPool.length}
@@ -243,6 +244,7 @@ export default function Landing() {
             How it's measured →
           </Link>
         </div>
+        <WeeklyTeaser />
       </section>
 
       {/* the league, every player */}

@@ -3,7 +3,8 @@ import { Link, NavLink } from "react-router-dom";
 import { useLeague } from "../data";
 import { ACTIVE_LEAGUES, LEAGUE_DEFS } from "../leagues";
 
-/** The nav items. The former Analysis menu is gone: team defence and
+/** The nav items. "This week" is the weekly shooting post. The former
+    Analysis menu is gone: team defence and
     decision EV migrated into /league as lenses/sections, and the lineups and
     value boards stay routable but unlinked (reachable from the player page
     and /methodology). Calibration is deliberately not here either: it reads
@@ -11,6 +12,7 @@ import { ACTIVE_LEAGUES, LEAGUE_DEFS } from "../leagues";
 function useNavItems() {
   return [
     { to: "/leaderboard", label: "Leaderboard" },
+    { to: "/weekly", label: "This week" },
     { to: "/league", label: "League" },
     { to: "/compare", label: "Compare" },
     { to: "/referees", label: "Referees" },
@@ -181,7 +183,7 @@ function MobileMenu({ onSearch }: { onSearch: () => void }) {
 export default function Nav({ onSearch }: { onSearch: () => void }) {
   const navItems = useNavItems();
   return (
-    <header className="border-b border-line">
+    <header className="border-b border-line print:hidden">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-y-2 px-5 py-4 sm:px-8">
         <div className="flex items-center gap-4">
           <Link

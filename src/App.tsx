@@ -27,6 +27,8 @@ import Feedback from "./views/Feedback";
 import Story from "./views/Story";
 import Comparison, { ComparisonIndex } from "./views/Comparison";
 import Changelog from "./views/Changelog";
+import Weekly from "./views/Weekly";
+import PlayerReport from "./views/PlayerReport";
 import About from "./views/About";
 import { GlossaryTermPage as GlossaryTermPage } from "./views/Glossary";
 
@@ -155,6 +157,7 @@ export default function App() {
           <Route path="/leaderboard/:lg/:season/:lens" element={<Leaderboard />} />
           <Route path="/shot-value" element={<Navigate to={LEGACY_TARGETS.leaderboard} replace />} />
           <Route path="/player/:lg/:id" element={<Player />} />
+          <Route path="/player/:lg/:id/report" element={<PlayerReport />} />
           <Route path="/lineups" element={<LineupsIndex />} />
           <Route path="/lineups/:lg" element={<LineupsBoard />} />
           <Route path="/lineups/:lg/:lineupId" element={<LineupDetail />} />
@@ -176,6 +179,8 @@ export default function App() {
           <Route path="/metrics" element={<ComparisonIndex />} />
           <Route path="/metrics/:slug" element={<Comparison />} />
           <Route path="/changelog" element={<Changelog />} />
+          <Route path="/weekly" element={<Weekly />} />
+          <Route path="/weekly/:week" element={<Weekly />} />
           <Route path="/about" element={<About />} />
           <Route path="/data" element={<OpenData />} />
           <Route path="/compare" element={<Compare />} />

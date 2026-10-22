@@ -1,6 +1,36 @@
 {
- "generated": "2026-08-19",
+ "generated": "2026-10-22",
  "entries": [
+  {
+   "date": "2026-10-22",
+   "title": "One-page scouting reports",
+   "body": "Every player page links to a one-page scouting report laid out for A4: the season's key numbers with percentiles, shot diet against the league, the five closest profiles in other leagues, the EuroLeague projection for domestic players, and every qualified season. Save it as a PDF from the browser."
+  },
+  {
+   "date": "2026-10-22",
+   "title": "Same profile, other leagues",
+   "body": "Every player page now lists the players in the other eight leagues who play most like him: where they shoot from, how much they shoot, and how they convert and draw fouls against their own league. Only current players are listed. Tested on players who played EuroLeague and a domestic league in the same season, the profile puts a player's own EuroLeague season in the top five of about 147 EuroLeague players 46% of the time."
+  },
+  {
+   "date": "2026-10-22",
+   "title": "What he would shoot in EuroLeague",
+   "body": "Player pages in Liga ACB, Lega Basket Serie A, the Basketball Bundesliga, ABA Liga and the Greek Basket League now project the player's shot-making in EuroLeague. His domestic figure is trusted in proportion to his attempts, then moved by his league's step to EuroLeague, measured on 576 players who played both in the same season. Tested on seasons it never saw, it beats both assuming he shoots the same and assuming a league-average EuroLeague shooter, and the range shown is as wide as one EuroLeague season of shots really is."
+  },
+  {
+   "date": "2026-10-22",
+   "title": "This week in shooting",
+   "body": "A weekly post: the hottest and coldest shooting games of each Monday-to-Sunday week across eight leagues, ranked by points scored from the field against what those shots were worth. One game of the week across every league, then each league's top three each way, with a share card per week. The archive starts with the 2025-26 seasons. The Greek Basket League is left out because its feed carries no game dates."
+  },
+  {
+   "date": "2026-10-22",
+   "title": "Foul-drawing now measured against where a player shoots",
+   "body": "FTAOE's expectation used to come from game context (clock, score, home court, opponent and officiating crew). That explained about 1% of the difference between players, so the number tracked the raw free-throw rate almost exactly (r 0.995 in the NBA) and leaned on height. Expected free throws now come from shot location: each attempt at the rim, in the paint, from mid-range or from three is valued at that season's league free throws per attempt in its zone, with fouled misses counted back in. In the NBA the new figure correlates 0.70 with the raw rate and 0.05 with height, repeats at 0.78 from one season to the next, and agrees at 0.85 with an independent version built from tracking data. Points over expected now uses it for its free-throw half. Team and referee views keep the context model."
+  },
+  {
+   "date": "2026-10-21",
+   "title": "Weekly updates again, and the 2026-27 season",
+   "body": "Data refreshes every Monday again, now for all nine leagues. 2026-27 is in the season picker for the NBA and seven European leagues, and becomes each league's default once enough players qualify. The WNBA rolls over to its complete 2026 season. The Greek Basket League stays at 2025-26: its game ids cannot be listed while a season is under way."
+  },
   {
    "date": "2026-08-19",
    "title": "Glossary, and headshots for six more leagues",

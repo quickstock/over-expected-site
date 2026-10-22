@@ -5,8 +5,8 @@ import { useMeasure } from "../lib/useMeasure";
 import { useTitle } from "../lib/useTitle";
 
 /**
- * Calibration of the possession model: predicted vs actual drawn-FT
- * rate per decile bin. Neutral ink only; this chart is not FTAOE,
+ * Calibration of the FTAOE baseline: qualified player-seasons in deciles of
+ * expected drawn free throws per possession (shot diet), against actual. Neutral ink only; this chart is not FTAOE,
  * so the diverging encoding stays out of it.
  */
 function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
@@ -23,9 +23,9 @@ function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
     pad.left + ((v - lo) / (hi - lo)) * (size - pad.left - pad.right);
   const y = (v: number) => pad.top + innerH - ((v - lo) / (hi - lo)) * innerH;
 
-  // per-100 tick values inside the domain, at whole per-100 steps
+  // every 5 per 100 inside the domain
   const ticks: number[] = [];
-  for (let t = Math.ceil(lo * 50) / 50; t <= hi; t += 0.02) {
+  for (let t = Math.ceil(lo * 20) / 20; t <= hi; t += 0.05) {
     ticks.push(Math.round(t * 1000) / 1000);
   }
 
@@ -36,7 +36,7 @@ function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
           width={size}
           height={size}
           role="img"
-          aria-label="Calibration: predicted vs actual drawn free throw rate per decile bin. Bins sit close to the diagonal."
+          aria-label="Calibration: expected vs actual drawn free throws per 100 possessions, qualified player-seasons in deciles of expected."
         >
           {/* y = x reference */}
           <line
@@ -102,7 +102,7 @@ function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
             fill="var(--color-ink-soft)"
             className="font-mono"
           >
-            predicted FTA per 100 poss
+            expected FTA per 100 poss
           </text>
           <text
             x={12}
@@ -124,7 +124,7 @@ function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
               r={4}
               fill="var(--color-ink)"
             >
-              <title>{`decile ${i + 1}: predicted ${(b.pred * 100).toFixed(1)}, actual ${(b.actual * 100).toFixed(1)} per 100 (${int(b.n)} possessions)`}</title>
+              <title>{`decile ${i + 1}: expected ${(b.pred * 100).toFixed(1)}, actual ${(b.actual * 100).toFixed(1)} per 100 (${int(b.n)} player-seasons)`}</title>
             </circle>
           ))}
         </svg>
@@ -151,6 +151,10 @@ export default function MethodologyEuro() {
   const calLo = calibration[0];
   const calHi = calibration[calibration.length - 1];
   const spreadPer100 = ((calHi.pred - calLo.pred) * 100).toFixed(1);
+  const c = meta.confounds;
+  const rates = meta.dietRates ?? {};
+  // the provisional season's few games give noisy rates; stop at the default
+  const rateSeasons = seasons.filter((s) => rates[s] && s <= meta.defaultSeason);
   const yoyN = meta.reliability.yoyPairs.length
     ? Math.round(
         meta.reliability.yoyPairs.reduce((a, p) => a + p.n, 0) /
@@ -165,9 +169,10 @@ export default function MethodologyEuro() {
       </h1>
       <p className="mt-4 text-base leading-relaxed text-ink-soft sm:text-lg">
         FTAOE, free throw attempts over expected, is how many free throws a
-        player draws per 100 possessions, compared with the league-average
-        rate. FTAOE = actual FTA − expected FTA; the per-100 version divides
-        by the possessions a player finished. Everything on this page is
+        player draws per 100 possessions beyond what his shot locations
+        predict. FTAOE = actual FTA minus expected FTA, where expected is what
+        a league-average player would have drawn from the same shots; the
+        per-100 version divides by the possessions a player finished. Everything on this page is
         computed separately for each league; models are never pooled across
         them. You are reading the{" "}
         {LEAGUE_LABEL[league]} numbers.
@@ -219,91 +224,184 @@ export default function MethodologyEuro() {
       <H2>The baseline</H2>
       <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
         <p>
-          Expected FTA is the league-average drawn-FT rate times the
-          possessions a player finished, season by season:{" "}
-          {seasons.map((sn, i) => (
-            <span key={sn}>
-              <span className="font-mono tnum">
-                {meta.leagueRateBySeason[sn].toFixed(1)}
-              </span>{" "}
-              in {sn}
-              {i < seasons.length - 1 ? ", " : "."}
-            </span>
-          ))}
+          Expected FTA is what a league-average player would have drawn from
+          the same shots. Every attempt goes into one of four zones (at the
+          rim, the rest of the paint, mid-range, three), each zone carries the
+          league's free throws per attempt for that season with the player's
+          own attempts left out, and expected FTA is his attempts in each
+          zone times that zone's rate. Fouled misses are not charged
+          field-goal attempts, so they go back in: a three-shot trip is a
+          three-point attempt, a two-shot trip is spread across his two-point
+          zones by how often he shoots there and how often and-1s happen
+          there. Each season is scaled so league expected equals league
+          actual, which keeps FTAOE a within-season comparison.
         </p>
+        {rateSeasons.length > 0 && (
+          <table className="mt-2 w-full max-w-md border-collapse text-sm">
+            <caption className="pb-2 text-left text-xs text-ink-faint">
+              League free throws per attempt, by zone
+            </caption>
+            <thead>
+              <tr className="border-b border-line text-left">
+                {["Season", "Rim", "Paint", "Mid", "Three"].map((h) => (
+                  <th
+                    key={h}
+                    scope="col"
+                    className="py-2 pr-4 font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rateSeasons.map((s) => (
+                <tr key={s} className="border-b border-line-soft">
+                  <th scope="row" className="py-2 pr-4 text-left font-mono font-normal tnum">
+                    {s}
+                  </th>
+                  {(["rim", "paint", "mid", "three"] as const).map((z) => (
+                    <td key={z} className="py-2 pr-4 font-mono tnum">
+                      {rates[s][z].toFixed(3)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
         <p>
-          On top of that rate we fit a context model: a Poisson GLM (log
-          link, no interactions) on seven features that are all external to
-          the player. Four describe game state (period, seconds remaining in
-          the period, score margin at the start of the possession, and the
-          real FIBA team-foul bonus, derived from the foul stream rather than a
-          late-game proxy) and three describe the situation: whether the
-          offense is at home, the opponent's drawn-FT rate, and the assigned
-          officiating crew's rate. The opponent and crew rates are
-          season-specific and leave-one-game-out, so a game's own outcomes
-          never enter its own features. Validation is season cross-fitting
-          (train on five seasons, predict the held-out sixth), so every
-          prediction is out-of-fold.
-        </p>
-        <p>
-          Expected is then anchored to each season's own league rate: the
-          held-out season's predictions are scaled so their mean equals that
-          season's actual rate. Whistle environments drift year to year;
-          anchoring keeps FTAOE a within-season comparison, which is what it
-          claims to be.
+          One limit is specific to the European feeds and stated plainly. FIBA
+          play-by-play records a two-shot trip without saying whether it came
+          from a foul on a missed shot or from the team-foul bonus, so bonus
+          free throws count as fouled two-point attempts here. That inflates
+          the rate at the rim and tilts the expectation slightly against tall
+          finishers
+          {c?.heightCorr != null && (
+            <>
+              {" "}(correlation with height{" "}
+              <span className="font-mono tnum">{c.heightCorr.toFixed(2)}</span>{" "}
+              in this league)
+            </>
+          )}
+          . Splitting the bonus trips out was measured and rejected: the
+          bonus half then goes unadjusted, and FTAOE falls back to roughly
+          the raw free-throw rate.
         </p>
         <p className="border-l-2 border-line pl-4 text-ink">
-          Out-of-fold, the full context model reduces Poisson deviance by{" "}
+          Why the baseline changed. Until October 2026 the expectation came
+          from game context (clock, margin, the real FIBA bonus, home court,
+          opponent and crew rates). Out-of-fold it reduced Poisson deviance
+          by{" "}
           <span className="font-mono tnum">
             {meta.modelLiftPct.toFixed(2)}%
           </span>{" "}
-          against each season's own league-average rate, most of it from the
-          bonus state, which mechanically produces free throws. Context
-          matters more here than in the NBA (where the same model bought
-          0.2%), but the expectation is still, in practice, mostly "versus
-          league average", and the site presents it that way.
+          against the plain league rate, which left FTAOE close to the raw
+          free-throw rate. Where a player shoots separates his free throws far
+          better
+          {c && (
+            <>
+              : FTAOE now correlates{" "}
+              <span className="font-mono tnum">{c.rawRateCorr.toFixed(2)}</span>{" "}
+              with the raw rate
+            </>
+          )}
+          . The context model still sits behind the team and referee views.
         </p>
-        <table className="mt-2 w-full max-w-sm border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-line text-left">
-              <th className="py-2 pr-4 font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
-                Held-out season
-              </th>
-              <th className="py-2 font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
-                Deviance reduction
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {meta.foldLifts.map((f) => (
-              <tr key={f.season} className="border-b border-line-soft">
-                <td className="py-2 pr-4 font-mono tnum">{f.season}</td>
-                <td className="py-2 font-mono tnum">
-                  {f.liftPct.toFixed(2)}%
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
 
       <H2>Calibration</H2>
       <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
         <p>
-          Possessions binned into deciles by predicted rate, predicted vs
-          actual:
+          Qualified player-seasons binned into deciles by expected free
+          throws per 100, expected against actual:
         </p>
         <CalibrationChart bins={calibration} />
         <p>
-          Each dot is roughly{" "}
+          Each dot is about{" "}
           <span className="font-mono tnum">{int(calibration[0].n)}</span>{" "}
-          possessions. The bins sit near the diagonal, so the model isn't
-          systematically over- or under-calling fouls, and from the lowest to
-          the highest decile it separates possessions by about{" "}
+          player-seasons. From the lowest decile to the highest, expected
+          spans{" "}
           <span className="font-mono tnum">{spreadPer100}</span> free throws
-          per 100, most of that the bonus state doing its work.
+          per 100 and actual follows it, so the baseline tells a rim-heavy
+          diet from a perimeter one before the gap above it is read. Actual
+          runs a little flatter than expected at both ends: the zone rates
+          slightly over-separate the extremes, most likely the bonus trips
+          described above, which is why this is a ranking of players within
+          a league and not a precise count.
         </p>
       </div>
+
+      {meta.translation && (
+        <>
+          <H2>From {LEAGUE_LABEL[league]} to EuroLeague</H2>
+          <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
+            <p>
+              Shot-making over expected is measured against each league's own
+              expected-FG model, so a +3 here and a +3 in EuroLeague are not the
+              same thing. EuroLeague clubs also play their domestic leagues, so
+              the same player, in the same season, has a number in both:{" "}
+              <span className="font-mono tnum">{int(meta.translation.nPairs)}</span>{" "}
+              such pairs across five leagues, players matched by name with at
+              least{" "}
+              <span className="font-mono tnum">{meta.translation.minFga}</span>{" "}
+              attempts on each side.
+            </p>
+            <p>
+              The projection on each player page trusts his domestic figure in
+              proportion to his attempts, attempts / (attempts +{" "}
+              {meta.translation.K}), then adds the league's step to EuroLeague.
+              Fitting a free slope instead gave 1.09, so what is trusted carries
+              over one for one; the 300 was the best of a grid on the test below.
+            </p>
+            <table className="mt-2 w-full max-w-sm border-collapse text-sm">
+              <caption className="pb-2 text-left text-xs text-ink-faint">
+                Step to EuroLeague shot-making, points of FG%
+              </caption>
+              <tbody>
+                {Object.entries(meta.translation.steps)
+                  .sort((x, y) => (y[1] ?? 0) - (x[1] ?? 0))
+                  .map(([lg, v]) => (
+                    <tr key={lg} className="border-b border-line-soft">
+                      <th scope="row" className="py-2 pr-4 text-left font-normal">
+                        {LEAGUE_LABEL[lg as keyof typeof LEAGUE_LABEL]}
+                      </th>
+                      <td className="py-2 font-mono tnum">{(v ?? 0).toFixed(1)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+            <p>
+              Tested on seasons it never saw, the projection misses by{" "}
+              <span className="font-mono tnum">{meta.translation.oosRmse.toFixed(2)}</span>{" "}
+              points on average, against{" "}
+              <span className="font-mono tnum">{meta.translation.flatRmse.toFixed(2)}</span>{" "}
+              for assuming a league-average EuroLeague shooter and{" "}
+              <span className="font-mono tnum">{meta.translation.naiveRmse.toFixed(2)}</span>{" "}
+              for assuming he shoots the same. On the{" "}
+              <span className="font-mono tnum">{meta.translation.moversN}</span>{" "}
+              players who moved from a domestic league to EuroLeague the next
+              season, it misses by{" "}
+              <span className="font-mono tnum">{meta.translation.moversRmse.toFixed(2)}</span>{" "}
+              against{" "}
+              <span className="font-mono tnum">{meta.translation.moversFlatRmse.toFixed(2)}</span>
+              . The pipeline refuses to publish it if it ever stops beating the
+              league-average answer.
+            </p>
+            <p className="border-l-2 border-line pl-4 text-ink">
+              Read it as a direction, not a forecast. Eighty percent of players
+              land between{" "}
+              <span className="font-mono tnum">{meta.translation.rangeLo.toFixed(1)}</span>{" "}
+              and{" "}
+              <span className="font-mono tnum">+{meta.translation.rangeHi.toFixed(1)}</span>{" "}
+              points of their projection, mostly because one EuroLeague season of
+              shots is itself noisy. It also only sees players good enough to be
+              signed, and it says nothing about role: a domestic star's shots
+              change when he comes off the bench.
+            </p>
+          </div>
+        </>
+      )}
 
       <H2>How stable is it</H2>
       <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
@@ -318,7 +416,7 @@ export default function MethodologyEuro() {
           <span className="font-mono tnum">
             r = {(meta.reliability.yoyMeanR ?? 0).toFixed(2)}
           </span>{" "}
-          on average across {seasons.length - 1} consecutive season pairs (
+          on average across {meta.reliability.yoyPairs.length} consecutive season pairs (
           {meta.reliability.yoyPairs.map((p, i) => (
             <span key={p.pair} className="font-mono tnum">
               {p.r.toFixed(2)}

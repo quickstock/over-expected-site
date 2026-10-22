@@ -200,49 +200,49 @@ export default function FoulDrawingBoard({ lensControl, season, onSeason }: {
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
           Free throw attempts over expected per 100 possessions, {season}.
-          Expected = this season's league-average rate,{" "}
+          Expected = what a league-average player would have drawn from the
+          same shots, zone by zone (league rate{" "}
           <span className="font-mono tnum">
             {data.meta.leagueRateBySeason[season].toFixed(1)}
           </span>{" "}
-          FTA per 100, over the same possessions; the league as a whole sits
-          at <span className="font-mono tnum">0.0</span> by construction.
+          FTA per 100); the league as a whole sits at{" "}
+          <span className="font-mono tnum">0.0</span> by construction.
         </p>
 
         {/*
-          Read this before sorting the table. FTAOE carries a large body-type
-          gradient that it does not adjust away, and the context model barely
-          separates it from the raw rate. Both are measured, not asserted; the
-          numbers come from meta.confounds, which is generated from the
-          committed model artifacts.
+          What the shot-diet baseline takes out and what it leaves, measured
+          by the export on the rows this board shows (meta.confounds).
         */}
         {data.meta.confounds && (
           <p className="mt-5 max-w-2xl rounded border border-line-soft bg-wash px-4 py-4 text-sm leading-relaxed text-ink-soft">
             <span className="font-display font-semibold text-ink">
-              What this board does not adjust for.
+              What this board takes out.
             </span>{" "}
-            Taller players draw more shooting fouls, and FTAOE does not remove
-            that: it correlates{" "}
-            <span className="font-mono tnum">
-              {data.meta.confounds.heightCorr.toFixed(2)}
-            </span>{" "}
-            with height, so roughly{" "}
-            <span className="font-mono tnum">
-              {Math.round(data.meta.confounds.heightR2 * 100)}%
-            </span>{" "}
-            of the spread here is body type rather than foul-drawing craft.
-            Adjusting for context moves the order very little either: FTAOE
+            Shot location: a big who draws free throws because he lives at the
+            rim gets credit only for what he draws beyond that. FTAOE
             correlates{" "}
             <span className="font-mono tnum">
-              {data.meta.confounds.rawRateCorr.toFixed(3)}
+              {data.meta.confounds.rawRateCorr.toFixed(2)}
             </span>{" "}
-            with the unadjusted rate. Read this as a reliable measure of how
-            often a player draws shooting fouls, not as a measure of skill net
-            of size.{" "}
+            with the raw free-throw rate
+            {data.meta.confounds.heightCorr != null && (
+              <>
+                {" "}and{" "}
+                <span className="font-mono tnum">
+                  {data.meta.confounds.heightCorr.toFixed(2)}
+                </span>{" "}
+                with height
+              </>
+            )}
+            . What stays in is contact craft within a zone and officiating
+            {data.meta.league !== "NBA" &&
+              ", and FIBA data cannot separate bonus free throws from fouled shots, which tilts it slightly against tall finishers"}
+            .{" "}
             <Link
               to="/methodology"
               className="underline decoration-line underline-offset-2 hover:text-ink"
             >
-              Why
+              How it is measured
             </Link>
             .
           </p>

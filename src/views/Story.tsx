@@ -4,7 +4,7 @@ import { useLeague, useLeagueData } from "../data";
 import { ACTIVE_LEAGUES } from "../leagues";
 import { boardPath } from "../routes";
 import { useTitle } from "../lib/useTitle";
-import { int, lastName, signed } from "../lib/format";
+import { int, lastName, ordinal, signed } from "../lib/format";
 import { Delta } from "../components/Delta";
 import RateSteps from "../components/story/RateSteps";
 import SlopeChart from "../components/story/SlopeChart";
@@ -63,6 +63,11 @@ export default function Story() {
   }
 
   const f0 = fallers[0];
+  // percentile labels and the next falls' range come from the data, so the
+  // copy stays true whichever players the current baseline puts here
+  const pctOf = (season: string, id: string) =>
+    data.leaderboard.find((r) => r.season === season && r.id === id)?.pct ?? 0;
+  const nextFalls = fallers.slice(1, 4).map((f) => f.before - f.after);
   const pairR = data.meta.reliability.yoyPairs.find((p) =>
     p.pair.startsWith(BEFORE),
   );
@@ -115,14 +120,23 @@ export default function Story() {
         <span className="font-mono tnum">
           {signed(f0.after - f0.before, 1)}
         </span>{" "}
-        per 100, from <Delta per100={f0.before} className="text-[15px] sm:text-base" /> (elite)
-        to <Delta per100={f0.after} className="text-[15px] sm:text-base" /> (below league
-        average) in one summer.{" "}
+        per 100, from <Delta per100={f0.before} className="text-[15px] sm:text-base" /> (
+        {ordinal(Math.round(pctOf(BEFORE, f0.id)))} percentile) to{" "}
+        <Delta per100={f0.after} className="text-[15px] sm:text-base" /> (
+        {ordinal(Math.round(pctOf(AFTER, f0.id)))}) in one summer.{" "}
         {fallers
           .slice(1, 4)
           .map((f) => lastName(f.name))
           .join(", ")}{" "}
-        gave back five to nine points each. The moves the memo described
+        gave back{" "}
+        <span className="font-mono tnum">
+          {Math.min(...nextFalls).toFixed(1)}
+        </span>{" "}
+        to{" "}
+        <span className="font-mono tnum">
+          {Math.max(...nextFalls).toFixed(1)}
+        </span>{" "}
+        each. The moves the memo described
         were the moves their free throws leaned on.
       </p>
       <SlopeChart

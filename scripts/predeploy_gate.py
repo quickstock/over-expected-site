@@ -557,9 +557,10 @@ def check_static_bodies():
     for url, body in pages.items():
         if body.strip():
             groups[hashlib.md5(body.encode()).hexdigest()].append(url)
-    # A cluster is expected when its members differ only by a season segment:
-    # /leaderboard/NBA/shot-value and /leaderboard/NBA/2025-26/shot-value.
-    season = re.compile(r"/\d{4}-\d{2}(?=/|$)")
+    # A cluster is expected when its members differ only by a season segment
+    # (/leaderboard/NBA/shot-value and /leaderboard/NBA/2025-26/shot-value) or
+    # a week's date (/weekly and /weekly/2026-10-12, the latest week).
+    season = re.compile(r"/\d{4}-\d{2}(?:-\d{2})?(?=/|$)")
     bad = [
         sorted(v) for v in groups.values()
         if len(v) > 1 and len({season.sub("", u) for u in v}) > 1

@@ -609,7 +609,7 @@ export default function Compare() {
                   bVal={b.per100}
                 />
                 <DuelRow
-                  label="Style-adjusted"
+                  label="Tracking cross-check"
                   a={aN}
                   b={bN}
                   aPct={a.spct}
@@ -623,8 +623,8 @@ export default function Compare() {
                 bName={b.name}
                 rows={[
                   { label: "FTAOE / 100", a: a.per100, b: b.per100, win: "higher", color: true },
-                  { label: "Style-adjusted / 100", a: a.sper100, b: b.sper100, win: "higher", color: true },
-                  { label: "Extra FTA vs league", a: a.ftaoe, b: b.ftaoe, win: "higher", color: true },
+                  { label: "Tracking cross-check / 100", a: a.sper100, b: b.sper100, win: "higher", color: true },
+                  { label: "Extra FTA vs expected", a: a.ftaoe, b: b.ftaoe, win: "higher", color: true },
                   { label: "FTA drawn", a: a.fta, b: b.fta, fmt: int },
                   { label: "Expected FTA", a: a.xfta, b: b.xfta, fmt: (v) => v.toFixed(1) },
                   { label: "Possessions", a: a.poss, b: b.poss, fmt: int },

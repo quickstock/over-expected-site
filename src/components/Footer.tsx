@@ -11,7 +11,7 @@ export default function Footer() {
     ? "Shooting fouls only"
     : "Free throws drawn from personal fouls";
   return (
-    <footer className="mt-20 border-t border-line">
+    <footer className="mt-20 border-t border-line print:hidden">
       <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
         <p className="max-w-2xl text-sm leading-relaxed text-ink-soft">
           Shot value, shot-making, and foul-drawing: three reads on the same

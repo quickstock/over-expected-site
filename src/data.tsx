@@ -10,6 +10,9 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import type {
   HeadshotMap,
+  ProfilesFile,
+  WeeklyIndex,
+  WeeklyWeek,
   LineupChunk,
   PlayerSeasonChunk,
   RapmData,
@@ -365,4 +368,25 @@ export function useHeadshots(league: League | null): HeadshotState {
   );
   if (r.status === "ready") return { status: "ready", data: r.data! };
   return { status: r.status };
+}
+
+/** The weekly shooting post's index: every published week, newest first. */
+export function useWeeklyIndex(): { status: "loading" | "error" | "ready"; data?: WeeklyIndex } {
+  return useLayerFile<WeeklyIndex>("weekly-index.json");
+}
+
+/** One week's lists for every league. Pass null until the week is known. */
+export function useWeeklyWeek(
+  week: string | null,
+): { status: "loading" | "error" | "ready"; data?: WeeklyWeek } {
+  return useLayerFile<WeeklyWeek>(week ? `weekly-${week}.json` : null);
+}
+
+/** Shot profiles for the cross-league similarity section. Pass false until
+    the section is near the viewport: the file is ~100 KB gzipped and only that
+    section reads it. */
+export function useProfiles(
+  enabled: boolean,
+): { status: "loading" | "error" | "ready"; data?: ProfilesFile } {
+  return useLayerFile<ProfilesFile>(enabled ? "profiles.json" : null);
 }
