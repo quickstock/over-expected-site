@@ -1091,6 +1091,12 @@ for (const lg of LEAGUES) {
   const label = LEAGUE_LABEL[lg];
   const current = d.meta.defaultSeason;
   const hasDefense = DEFENSE_LEAGUES.includes(lg);
+  // A season newer than the default has not yet cleared the qualified-player
+  // count that makes the export roll over to it, so its pages are early-season
+  // stubs: reachable from the season picker, but noindex and out of the
+  // sitemap until the rollover makes the season the league's default.
+  const provisional = (season) =>
+    d.meta.seasons.indexOf(season) > d.meta.seasons.indexOf(current);
 
   /** Shell an evergreen/dated pair for one page identity. */
   const pair = (build, title, description, image, block, ld) => {
@@ -1103,10 +1109,11 @@ for (const lg of LEAGUES) {
         path, image, canonical,
         block: block ? block(season ?? current) : undefined,
         ld: ld ? ld(season ?? current) : undefined,
+        robots: provisional(season) ? "noindex,follow" : undefined,
       });
       // The sitemap lists canonical URLs only: a dated current-season URL is
       // reachable and correct, but it points at the evergreen one.
-      if (path === canonical) canonicalUrls.push(`${BASE}${path}`);
+      if (path === canonical && !provisional(season)) canonicalUrls.push(`${BASE}${path}`);
     }
   };
 
@@ -1463,9 +1470,9 @@ for (const lg of LEAGUES) {
       // A page ranking fewer than MIN_REF_ROWS officials is not a ranking, but the
       // league toggle can still reach it, so it exists and says so rather than
       // 404ing or inheriting the homepage's canonical.
-      robots: thin ? "noindex,follow" : undefined,
+      robots: thin || provisional(season) ? "noindex,follow" : undefined,
     });
-    if (path === canonical && !thin) canonicalUrls.push(`${BASE}${path}`);
+    if (path === canonical && !thin && !provisional(season)) canonicalUrls.push(`${BASE}${path}`);
   }
 }
 

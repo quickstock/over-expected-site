@@ -8,3 +8,4 @@ tsconfig.tsbuildinfo
 
 __pycache__/
 *.pyc
+logs/
