@@ -5,37 +5,65 @@ import { weeklyPath } from "../routes";
 import { divergingText } from "../lib/color";
 import { firstLast, signed } from "../lib/format";
 import { matchup, weekRange } from "../lib/weekly";
+import Headshot from "./Headshot";
+import type { WeeklyIndex } from "../types";
 
-/** Homepage pointer to the weekly shooting post: the latest week's hottest
-    game in one line. The index loads after the page, so the slot keeps its
-    height while it does: content appearing above the fold later would shift
-    everything below it (CLS). */
+type Game = WeeklyIndex["weeks"][number]["best"];
+
+function GameLine({ kind, g }: { kind: string; g: Game }) {
+  return (
+    <div className="flex items-center gap-3">
+      <Headshot league={g.lg} id={g.id} name={g.name} className="h-11 w-11" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+          {kind} · {LEAGUE_LABEL[g.lg]}
+        </p>
+        <p className="truncate font-display text-[15px] font-semibold text-ink group-hover:underline group-hover:underline-offset-4">
+          {firstLast(g.name)}
+        </p>
+        <p className="font-mono tnum text-[11px] leading-snug text-ink-soft">
+          {g.fgm}/{g.fga} FG, {g.pts} pts on shots worth {g.xpts.toFixed(1)} · {matchup(g)}
+        </p>
+      </div>
+      <span
+        className="shrink-0 font-mono tnum text-2xl font-semibold"
+        style={{ color: divergingText(g.oe) }}
+      >
+        {signed(g.oe)}
+      </span>
+    </div>
+  );
+}
+
+/** Homepage lead: the latest week's hottest and coldest shooting game across
+    every league, linking to the full post. The index loads after the page, so
+    the slot keeps its height while it does: content appearing above the fold
+    later would shift everything below it (CLS). */
 export default function WeeklyTeaser() {
   const index = useWeeklyIndex();
   const latest = index.data?.weeks[0];
-  const slot = "mt-10 block min-h-[9.5rem] max-w-2xl sm:min-h-[7.25rem]";
+  const slot = "mt-8 block min-h-[15.75rem] sm:min-h-[8.5rem]";
   if (!latest) return <div className={slot} aria-hidden="true" />;
-  const b = latest.best;
   return (
     <Link
       to={weeklyPath()}
-      className={`group ${slot} rounded border border-line-soft px-5 py-4 transition-colors duration-150 hover:border-line`}
+      className={`group ${slot} rounded-md border border-line px-4 py-4 transition-colors duration-150 hover:border-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:px-5`}
     >
-      <p className="font-mono tnum text-[11px] uppercase tracking-wider text-ink-faint">
-        This week in shooting · {weekRange(latest.week)}
-      </p>
-      <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
-        <span className="font-display font-semibold text-ink">{firstLast(b.name)}</span>{" "}
-        ({matchup(b)}, {LEAGUE_LABEL[b.lg]}) went {b.fgm} of {b.fga} for {b.pts} points
-        on shots worth {b.xpts.toFixed(1)}:{" "}
-        <span className="font-mono tnum font-semibold" style={{ color: divergingText(b.oe) }}>
-          {signed(b.oe)}
-        </span>{" "}
-        over expected.{" "}
-        <span className="text-ink underline underline-offset-2 group-hover:decoration-ink">
-          Every league's hottest and coldest
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="font-display text-sm font-semibold text-ink">
+          This week in shooting{" "}
+          <span className="font-mono tnum text-xs font-normal text-ink-faint">
+            {weekRange(latest.week)}
+          </span>
+        </p>
+        <span className="font-display text-xs font-medium text-ink-soft group-hover:text-ink">
+          Every league's top 3 →
         </span>
-      </p>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+        <GameLine kind="Hottest" g={latest.best} />
+        <GameLine kind="Coldest" g={latest.worst} />
+      </div>
     </Link>
   );
 }

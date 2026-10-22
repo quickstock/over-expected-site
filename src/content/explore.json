@@ -1,0 +1,46 @@
+{
+ "presets": [
+  {
+   "id": "ft-rate",
+   "question": "Is foul-drawing just the free-throw rate?",
+   "x": "fta100",
+   "y": "ftaoe100",
+   "note": "If FTAOE were the raw rate in disguise, these dots would sit on one line. The spread around the trend is what shot locations explain: two players drawing the same free throws can be far apart once you know where they shoot from."
+  },
+  {
+   "id": "easy-shots",
+   "question": "Do easy shots make good shooters?",
+   "x": "xfgPct",
+   "y": "makeOE",
+   "note": "Across: how easy his looks were. Up: how much better than that he shot. A flat cloud means taking easy shots says nothing about converting them."
+  },
+  {
+   "id": "touch",
+   "question": "Does free-throw touch predict shot-making?",
+   "x": "ftPct",
+   "y": "makeOE",
+   "note": "FT% is the old proxy for shooting touch. Up is shot-making against the difficulty of the looks, so a rising cloud means the proxy carries over to shots from the floor."
+  },
+  {
+   "id": "volume",
+   "question": "Who stays efficient at volume?",
+   "x": "fga",
+   "y": "fgPoe100",
+   "note": "Top right is the rare corner: players taking a lot of shots and still beating what those shots were worth."
+  },
+  {
+   "id": "fg-misses",
+   "question": "What does FG% miss?",
+   "x": "fgPct",
+   "y": "poe100",
+   "note": "Players at the same FG% can add very different value: a high percentage on easy looks, with no free throws, is worth less than it reads."
+  },
+  {
+   "id": "diet",
+   "question": "Do players draw the free throws their shots predict?",
+   "x": "xfta100",
+   "y": "fta100",
+   "note": "The dashed line is drawing exactly what the shot locations predict. Height above it is foul-drawing over expected."
+  }
+ ]
+}

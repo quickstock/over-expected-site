@@ -19,7 +19,7 @@ interface Props {
 }
 
 /**
- * The signature element: cumulative actual vs league-average-pace FTA,
+ * The signature element: cumulative actual vs expected,
  * the gap between them shaded in the diverging FTAOE encoding.
  */
 export default function GapArc({
@@ -154,7 +154,7 @@ export default function GapArc({
           width={width}
           height={height}
           role="img"
-          aria-label={`Cumulative actual versus league-average pace across ${n} games. Final: ${Math.round(last.cumActual)} actual, ${last.cumExpected.toFixed(0)} expected, gap ${signed(finalDiff, 1)}.`}
+          aria-label={`Cumulative actual versus expected across ${n} games. Final: ${Math.round(last.cumActual)} actual, ${last.cumExpected.toFixed(0)} expected, gap ${signed(finalDiff, 1)}.`}
         >
           <g style={sweepStyle}>
             {gapPaths.map((p, i) => (

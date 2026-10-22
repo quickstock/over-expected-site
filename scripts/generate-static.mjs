@@ -1010,6 +1010,45 @@ shell({
   path: "/compare",
   image: "site.png",
 });
+// The chart builder. Its questions come from src/content/explore.json, the same
+// file the React view reads, so the prerendered list is the one on the page.
+const explorePresets = JSON.parse(
+  readFileSync(join(ROOT, "src", "content", "explore.json"), "utf8"),
+).presets;
+shell({
+  title: "Plot any two basketball stats: the chart builder",
+  description: fit([
+    `Any two of twelve published numbers on the axes, for every qualified player in ${LEAGUES.length} leagues.`,
+    "Trend line and correlation, colour, filters and search.",
+    "The link carries the whole chart.",
+  ]),
+  block: staticBlock({
+    h1: "Plot any two numbers",
+    parts: [
+      answer(
+        "Can I make my own chart of basketball player stats?",
+        "Yes. Explore puts any two of twelve published numbers (points over " +
+          "expected, shot-making, foul-drawing, FG%, shot quality, volume, free " +
+          "throws drawn and their shot-diet expectation, FT%) on the axes, for " +
+          `every qualified player in one league or all ${LEAGUES.length}, with a ` +
+          "least-squares trend and its correlation. Across leagues it ranks each " +
+          "player within his own league, because over-expected figures are measured " +
+          "against the league they were earned in.",
+      ),
+      `<h2>Start from a question</h2>\n<ul>` +
+        explorePresets
+          .map(
+            (p) =>
+              `<li><a href="/explore?x=${p.x}&amp;y=${p.y}">${esc(p.question)}</a> ` +
+              `${esc(p.note)}</li>`,
+          )
+          .join("\n") +
+        `</ul>`,
+    ],
+  }),
+  path: "/explore",
+  image: "site.png",
+});
 shell({
   title: "Send feedback on Over Expected",
   description: fit([
@@ -2700,7 +2739,7 @@ for (const [i, e] of weeklyIndex.entries()) {
 // canonical to their evergreen twin: a sitemap should list canonicals only.
 const urls = [
   `${BASE}/`, `${BASE}/methodology`,
-  `${BASE}/data`, `${BASE}/compare`,
+  `${BASE}/data`, `${BASE}/compare`, `${BASE}/explore`,
   ...canonicalUrls.sort(),
   ...refUrls.sort(),
   ...glossaryUrls.sort(),

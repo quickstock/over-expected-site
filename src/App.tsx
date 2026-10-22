@@ -30,6 +30,7 @@ import Changelog from "./views/Changelog";
 import Weekly from "./views/Weekly";
 import PlayerReport from "./views/PlayerReport";
 import About from "./views/About";
+import Explore from "./views/Explore";
 import { GlossaryTermPage as GlossaryTermPage } from "./views/Glossary";
 
 import { useLeague } from "./data";
@@ -182,6 +183,7 @@ export default function App() {
           <Route path="/weekly" element={<Weekly />} />
           <Route path="/weekly/:week" element={<Weekly />} />
           <Route path="/about" element={<About />} />
+          <Route path="/explore" element={<Explore />} />
           <Route path="/data" element={<OpenData />} />
           <Route path="/compare" element={<Compare />} />
           <Route path="/league" element={<Navigate to={LEGACY_TARGETS.league} replace />} />

@@ -18,29 +18,32 @@ export default function SegmentedControl({
   ariaLabel: string;
   className?: string;
 }) {
-  // Past seven options (decades of seasons), chips stop scaling:
-  // degrade to a native select with the same API.
-  if (options.length > 7) {
-    return (
-      <select
-        aria-label={ariaLabel}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`rounded-md border border-line bg-paper px-3 py-1.5 font-display text-[13px] font-medium text-ink focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-ink ${className}`}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    );
-  }
+  const select = (extra: string) => (
+    <select
+      aria-label={ariaLabel}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`rounded-md border border-line bg-paper px-3 py-1.5 font-display text-[13px] font-medium text-ink focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-ink ${extra} ${className}`}
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+  // Past seven options chips stop scaling anywhere; past five they stop
+  // fitting a phone (seven seasons wrapped into two-line '20-/21 labels), so
+  // narrow screens get the native select and wider ones keep the chips.
+  if (options.length > 7) return select("");
+  const narrow = options.length > 5;
   return (
+    <>
+      {narrow && select("sm:hidden")}
     <div
       role="group"
       aria-label={ariaLabel}
-      className={`inline-flex items-stretch overflow-hidden rounded-md border border-line ${className}`}
+      className={`${narrow ? "hidden sm:inline-flex" : "inline-flex"} items-stretch overflow-hidden rounded-md border border-line ${className}`}
     >
       {options.map((o, i) => (
         <button
@@ -48,7 +51,7 @@ export default function SegmentedControl({
           type="button"
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
-          className={`group px-2.5 py-1.5 font-display text-[13px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink sm:px-3 ${
+          className={`group whitespace-nowrap px-2.5 py-1.5 font-display text-[13px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink sm:px-3 ${
             o.value === value
               ? "bg-ink text-paper"
               : "bg-paper text-ink-soft hover:bg-wash hover:text-ink"
@@ -67,5 +70,6 @@ export default function SegmentedControl({
         </button>
       ))}
     </div>
+    </>
   );
 }

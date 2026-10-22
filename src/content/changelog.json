@@ -3,6 +3,16 @@
  "entries": [
   {
    "date": "2026-10-22",
+   "title": "Explore: plot any two numbers",
+   "body": "A chart builder at /explore. Put any two of twelve published numbers on the axes, for one league or all nine, and read the trend and its correlation off the chart. Colour the dots by an over-expected figure, filter by position or possessions, mark players by name, and tap a dot for his numbers. Across leagues it ranks each player within his own league, since over-expected figures are measured against the league they were earned in. The link carries the whole chart, and the chart downloads as an image."
+  },
+  {
+   "date": "2026-10-22",
+   "title": "The front page leads with this week",
+   "body": "The homepage now opens on the week's hottest and coldest shooting games across every league, with faces on the season's leaders. Player pages open on shot value, the headline number, with the scouting report linked at the top. On phones, season pickers are a compact menu instead of a row that wrapped."
+  },
+  {
+   "date": "2026-10-22",
    "title": "One-page scouting reports",
    "body": "Every player page links to a one-page scouting report laid out for A4: the season's key numbers with percentiles, shot diet against the league, the five closest profiles in other leagues, the EuroLeague projection for domestic players, and every qualified season. Save it as a PDF from the browser."
   },

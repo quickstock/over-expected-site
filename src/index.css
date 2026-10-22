@@ -39,16 +39,21 @@ body {
   margin: 0;
 }
 
-h1,
-h2,
-h3,
-h4 {
-  font-family: var(--font-display);
-  text-wrap: balance;
-}
+/* In the base layer so utilities win: `text-wrap` is a shorthand that also
+   sets text-wrap-mode, so unlayered it silently overrode `truncate` and
+   `whitespace-nowrap` on every heading and paragraph. */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
 
-p {
-  text-wrap: pretty;
+  p {
+    text-wrap: pretty;
+  }
 }
 
 .tnum {

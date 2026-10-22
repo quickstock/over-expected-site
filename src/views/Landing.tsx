@@ -21,6 +21,8 @@ import ExpectedVsActual from "../components/charts/ExpectedVsActual";
 import RefStrip from "../components/charts/RefStrip";
 import TeamScatter from "../components/charts/TeamScatter";
 import WeeklyTeaser from "../components/WeeklyTeaser";
+import Headshot from "../components/Headshot";
+import { PRESETS, explorePath } from "../lib/explore";
 
 function seasonShort(s: string) {
   return `'${s.slice(2, 4)}-${s.slice(5)}`;
@@ -59,15 +61,16 @@ function LensCard({
       <span className="font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
         {label}
       </span>
-      <p className="mt-2 min-h-[3.5rem] text-sm leading-relaxed text-ink-soft">
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-soft sm:min-h-[2.75rem]">
         {desc}
       </p>
       {row && metric !== undefined && (
-        <span className="mt-3 flex items-baseline justify-between gap-2 border-t border-line-soft pt-3">
-          <span className="min-w-0 truncate font-display text-[15px] font-semibold text-ink group-hover:underline group-hover:underline-offset-4">
+        <span className="mt-3 flex items-center gap-3 border-t border-line-soft pt-3">
+          <Headshot league={league} id={row.id} name={row.name} fallback="none" className="h-10 w-10" />
+          <span className="min-w-0 flex-1 font-display text-[15px] font-semibold leading-snug text-ink group-hover:underline group-hover:underline-offset-4">
             {row.name}
           </span>
-          <Delta per100={metric} className="text-lg" />
+          <Delta per100={metric} className="text-2xl" />
         </span>
       )}
       <span className="mt-2 font-mono tnum text-xs text-ink-faint">
@@ -160,24 +163,26 @@ export default function Landing() {
 
   return (
     <div className="mx-auto max-w-4xl px-5 sm:px-8">
-      {/* hero: the thesis + three lenses */}
-      <section className="pt-14 sm:pt-20">
+      {/* hero: the thesis, this week's games, three lenses */}
+      <section className="pt-10 sm:pt-16">
         <p className="font-mono tnum text-xs text-ink-faint">
           {LEAGUE_LABEL[league]} · {seasons[0]} to{" "}
           {seasons[seasons.length - 1]} · {int(data.meta.nPossessions)}{" "}
           possessions
         </p>
-        <h1 className="mt-4 font-display text-5xl font-bold leading-[1.02] tracking-tight text-balance text-ink sm:text-7xl">
+        <h1 className="mt-3 font-display text-[2.75rem] font-bold leading-[1.02] tracking-tight text-balance text-ink sm:text-7xl">
           Every shot, over expected.
         </h1>
-        <p className="mt-5 max-w-prose text-base leading-relaxed text-ink-soft sm:text-lg">
+        <p className="mt-4 max-w-prose text-base leading-relaxed text-ink-soft sm:text-lg">
           What a shot is worth in {def.inLabel}: the make, and the
           {def.sftaOnly ? " fouls" : " free throws"} it draws, measured against
           the league. Three reads on the same number, for every player, team,
           and official.
         </p>
 
-        <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-3">
+        <WeeklyTeaser />
+
+        <div className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-3">
           <SegmentedControl
             ariaLabel="Season"
             options={seasons.map((s) => ({
@@ -194,14 +199,14 @@ export default function Landing() {
         </div>
 
         {/* three-lens triptych */}
-        <div className="mt-10 grid gap-x-8 gap-y-6 sm:grid-cols-3">
+        <div className="mt-6 grid gap-x-8 gap-y-6 sm:grid-cols-3">
           <LensCard
             lens="value"
             league={league}
             season={season}
             current={data.meta.defaultSeason}
             label="Shot value"
-            desc="The points a player adds over expected: shots made above their difficulty, plus the free throws he draws."
+            desc="Points added over expected: shots made above their difficulty, plus the free throws drawn."
             row={byValue}
             metric={byValue?.poe100}
             count={svPool.length}
@@ -212,7 +217,7 @@ export default function Landing() {
             season={season}
             current={data.meta.defaultSeason}
             label="Shot-making"
-            desc="Converting better, or worse, than the difficulty of the looks taken. Field goals only."
+            desc="Field goals made above or below the difficulty of the looks."
             row={byMaking}
             metric={byMaking?.fgPoe100}
             count={svPool.length}
@@ -223,19 +228,19 @@ export default function Landing() {
             season={season}
             current={data.meta.defaultSeason}
             label="Foul-drawing"
-            desc="Free throws drawn beyond what a player's shot locations predict, so rim volume and size are taken out."
+            desc="Free throws drawn beyond what his shot locations predict."
             row={byFouls}
             metric={byFouls?.ftaoe100}
             count={svPool.length}
           />
         </div>
 
-        <div className="mt-10 flex flex-wrap items-center gap-5">
+        <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
           <Link
             to={boardPath(league, DEFAULT_BOARD_LENS)}
             className="rounded-md bg-ink px-5 py-2.5 font-display text-sm font-medium text-paper transition-opacity duration-150 hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
-            Explore the leaderboard
+            Open the leaderboard
           </Link>
           <Link
             to="/methodology"
@@ -244,11 +249,32 @@ export default function Landing() {
             How it's measured →
           </Link>
         </div>
-        <WeeklyTeaser />
+
+        {/* doorway into the chart builder: three questions it answers */}
+        <div className="mt-10 rounded-md bg-wash px-4 py-4 sm:px-5">
+          <p className="font-display text-sm font-semibold text-ink">
+            Explore: plot any two numbers
+          </p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Every qualified player in nine leagues, on the axes you pick.
+          </p>
+          <ul className="mt-3 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:gap-x-5">
+            {PRESETS.slice(0, 3).map((p) => (
+              <li key={p.id}>
+                <Link
+                  to={explorePath({ preset: p, league })}
+                  className="font-display text-sm font-medium text-ink underline decoration-line underline-offset-4 transition-colors duration-150 hover:decoration-ink"
+                >
+                  {p.question} →
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       {/* the league, every player */}
-      <section className="mt-20 border-t border-line pt-12 sm:mt-28">
+      <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
         <SectionHead title={`${LEAGUE_LABEL[league]}, every player, ${season}`}>
           Foul-drawing per 100 possessions, one dot per qualified player. The
           shot value, shot-making, and foul-drawing boards all sort this same
@@ -272,7 +298,7 @@ export default function Landing() {
 
       {/* the argument: FG% is mostly the shot menu */}
       {moves && (
-        <section className="mt-20 border-t border-line pt-12 sm:mt-28">
+        <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
           <SectionHead title="What FG% gets wrong">
             Field-goal percentage says what a player shot, not how well he shot
             it. Each dot is a qualified player, placed by what the shots he
@@ -300,7 +326,7 @@ export default function Landing() {
       )}
 
       {/* teams */}
-      <section className="mt-20 border-t border-line pt-12 sm:mt-28">
+      <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
         <SectionHead title={`Teams: drawn vs conceded, ${season}`}>
           {def.sftaOnly ? "Shooting fouls" : "Free throws"} each team draws
           against what it concedes, per 100 possessions over expected. The
@@ -323,7 +349,7 @@ export default function Landing() {
       </section>
 
       {/* officials */}
-      <section className="mt-20 border-t border-line pt-12 sm:mt-28">
+      <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
         <SectionHead title={`Officials, measured, ${season}`}>
           Each dot is one official (minimum {def.refMinGames} games): the
           {def.sftaOnly ? " shooting-foul" : " drawn-FT"} rate in games they
@@ -341,7 +367,7 @@ export default function Landing() {
       </section>
 
       {/* how it's measured */}
-      <section className="mt-20 border-t border-line pt-12 sm:mt-28">
+      <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
         <SectionHead title="What this measures, and what it doesn't">
           Leak-free models, anchored season by season: a shot's expected value
           never comes from a model that saw it. The number blends playstyle,

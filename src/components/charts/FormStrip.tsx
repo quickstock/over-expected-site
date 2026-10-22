@@ -66,7 +66,7 @@ export default function FormStrip({
           role="img"
           aria-label={`Trailing ${win}-game FTAOE per 100 possessions across the season. Peak ${signed(peak.per100, 1)}, low ${signed(trough.per100, 1)}.`}
         >
-          {/* zero = league-average rate */}
+          {/* zero = expected */}
           <line
             x1={pad.left}
             x2={pad.left + innerW}
@@ -83,7 +83,7 @@ export default function FormStrip({
             fill="var(--color-ink-faint)"
             className="font-mono"
           >
-            league average
+            expected
           </text>
           <text
             x={pad.left + innerW}

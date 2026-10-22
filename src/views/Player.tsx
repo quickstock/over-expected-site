@@ -277,14 +277,16 @@ function ShotQualityPanel({ lens, season, sv, pool }: {
 /** The three offensive lenses every league ships. Defence is appended for
     leagues carrying the lineup layer, since adjusted plus-minus is the only
     defensive measure this site puts under a player's name. */
-const LENS_OPTS: { value: Lens; label: string }[] = [
-  { value: "value", label: "Shot value" },
-  { value: "making", label: "Shot-making" },
-  { value: "fouls", label: "Foul-drawing" },
+/* Short labels below sm: four full labels run past a 375px screen. */
+const LENS_OPTS: { value: Lens; label: string; shortLabel: string }[] = [
+  { value: "value", label: "Shot value", shortLabel: "Value" },
+  { value: "making", label: "Shot-making", shortLabel: "Making" },
+  { value: "fouls", label: "Foul-drawing", shortLabel: "Fouls" },
 ];
-const DEFENSE_OPT: { value: Lens; label: string } = {
+const DEFENSE_OPT: { value: Lens; label: string; shortLabel: string } = {
   value: "defense",
   label: "Defense",
+  shortLabel: "Defense",
 };
 
 export default function Player() {
@@ -305,7 +307,7 @@ export default function Player() {
   const lensOpts = hasDefense ? [...LENS_OPTS, DEFENSE_OPT] : LENS_OPTS;
   const lens = (lensOpts.some((o) => o.value === params.get("lens"))
     ? params.get("lens")
-    : "fouls") as Lens;
+    : "value") as Lens;
   // Lazy layer file; nothing is fetched for leagues without the layer.
   const rapmState = useRapm(hasDefense ? league : null);
 
@@ -445,14 +447,22 @@ export default function Player() {
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-14">
-      <Link
-        to={boardPath(league, DEFAULT_BOARD_LENS, datedPart(season, data.meta.defaultSeason))}
-        className="font-display text-sm text-ink-soft transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-      >
-        ← Leaderboard
-      </Link>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <Link
+          to={boardPath(league, DEFAULT_BOARD_LENS, datedPart(season, data.meta.defaultSeason))}
+          className="font-display text-sm text-ink-soft transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+        >
+          ← Leaderboard
+        </Link>
+        <Link
+          to={`/player/${league}/${row.id}/report?season=${encodeURIComponent(season)}`}
+          className="font-display text-sm font-medium text-ink underline decoration-line underline-offset-4 transition-colors duration-150 hover:decoration-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+        >
+          Scouting report (PDF)
+        </Link>
+      </div>
 
-      <header className="mt-6">
+      <header className="mt-5">
         <div className="flex items-center gap-4 sm:gap-5">
           <Headshot
             league={league}
@@ -488,7 +498,7 @@ export default function Player() {
             {season}
           </p>
         )}
-        <div className="mt-6">
+        <div className="mt-4">
           <SegmentedControl
             ariaLabel="Metric"
             options={lensOpts}
@@ -542,7 +552,7 @@ export default function Player() {
             </>
           }
           label="Actual / expected FTA"
-          sub={`league rate: ${data.meta.leagueRateBySeason[season].toFixed(1)} per 100`}
+          sub="expected from his shot locations"
         />
         <Stat
           delay={180}
@@ -551,7 +561,7 @@ export default function Player() {
               {signed(row.ftaoe, 1)}
             </span>
           }
-          label="Extra FTA vs league"
+          label="Extra FTA vs expected"
         />
       </section>
 
@@ -860,12 +870,6 @@ export default function Player() {
           className="ml-6 font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           Compare him →
-        </Link>
-        <Link
-          to={`/player/${league}/${row.id}/report?season=${encodeURIComponent(season)}`}
-          className="ml-6 font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-        >
-          Scouting report (PDF) →
         </Link>
       </p>
     </div>
