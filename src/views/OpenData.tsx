@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useData, useLeague } from "../data";
+import { seasonOptions, useData, useLeague } from "../data";
 import { LEAGUE_LABEL, leagueDef } from "../leagues";
 import { int } from "../lib/format";
 import { useTitle } from "../lib/useTitle";
@@ -44,8 +44,10 @@ export default function OpenData() {
         to use it. {LEAGUE_LABEL[league]}:{" "}
         {int(data.leaderboard.length)} player-season rows across{" "}
         {int(meta.seasons.length)} seasons, built from{" "}
-        {int(meta.nPossessions)} possessions of public play-by-play. Toggle
-        the league in the header for the other file set.
+        {int(meta.nPossessions)} possessions of public play-by-play.
+        {meta.archive &&
+          ` The archive, ${meta.archive.seasons[0]} to ${meta.archive.seasons[meta.archive.seasons.length - 1]}, ships as its own file in the same shape.`}{" "}
+        Toggle the league in the header for the other file set.
       </p>
 
       <h2 className="mt-12 font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
@@ -57,7 +59,14 @@ export default function OpenData() {
           name={`data-${league}.json`}
           desc="leaderboard, referees, teams, calibration, meta"
         />
-        {meta.seasons.map((s) => (
+        {meta.archive && (
+          <FileRow
+            href={`${base}data-${league}-archive.json`}
+            name={`data-${league}-archive.json`}
+            desc={`the same, ${meta.archive.seasons[0]} to ${meta.archive.seasons[meta.archive.seasons.length - 1]}`}
+          />
+        )}
+        {seasonOptions(data).map((s) => (
           <FileRow
             key={s}
             href={`${base}players-${league}-${s}.json`}

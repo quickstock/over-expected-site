@@ -101,11 +101,54 @@ const SFTA_ONLY = { NBA: true };
 const ftNoun = (lg) =>
   SFTA_ONLY[lg] ? "shooting-foul free throws" : "free throws drawn";
 
+// An archive era (the NBA's 1997-98 to 2019-20, data-{CODE}-archive.json) is
+// folded in here the way src/lib/archive.ts folds it in the browser, so every
+// shell below sees one continuous history: archive seasons get boards, archive
+// players and officials get pages. The live era keeps its default season and
+// model figures. Keep the two merges in step.
+function mergeArchive(live, arch) {
+  const refProfiles = { ...arch.refProfiles };
+  for (const [id, p] of Object.entries(live.refProfiles)) {
+    const a = refProfiles[id];
+    refProfiles[id] = a
+      ? { name: p.name, seasons: [...new Set([...a.seasons, ...p.seasons])].sort(),
+          detail: { ...a.detail, ...p.detail },
+          careers: [...a.careers, ...p.careers] }
+      : p;
+  }
+  return {
+    ...live,
+    meta: {
+      ...live.meta,
+      archive: { ...live.meta.archive, loaded: true },
+      seasons: [...new Set([...arch.meta.seasons, ...live.meta.seasons])].sort(),
+      nPossessions: live.meta.nPossessions + arch.meta.nPossessions,
+      leagueRateBySeason: { ...arch.meta.leagueRateBySeason, ...live.meta.leagueRateBySeason },
+      dietRates: { ...arch.meta.dietRates, ...live.meta.dietRates },
+      referees: live.meta.referees && {
+        ...live.meta.referees,
+        league: { ...arch.meta.referees?.league, ...live.meta.referees.league },
+      },
+    },
+    leaderboard: [...arch.leaderboard, ...live.leaderboard],
+    distributions: { ...arch.distributions, ...live.distributions },
+    leagueZones: { ...arch.leagueZones, ...live.leagueZones },
+    referees: { ...arch.referees, ...live.referees },
+    refProfiles,
+    shotValue: { ...arch.shotValue, ...live.shotValue },
+    teams: { ...arch.teams, ...live.teams },
+  };
+}
+const readJson = (name) => JSON.parse(readFileSync(join(ROOT, "public", name), "utf8"));
 const dataByLeague = Object.fromEntries(
-  LEAGUES.map((lg) => [
-    lg,
-    JSON.parse(readFileSync(join(ROOT, "public", `data-${lg}.json`), "utf8")),
-  ]),
+  LEAGUES.map((lg) => {
+    const live = readJson(`data-${lg}.json`);
+    return [lg, live.meta.archive ? mergeArchive(live, readJson(`data-${lg}-archive.json`)) : live];
+  }),
+);
+// Seasons that belong to an archive era, per league.
+const ARCHIVE_SEASONS = Object.fromEntries(
+  LEAGUES.map((lg) => [lg, new Set(dataByLeague[lg].meta.archive?.seasons ?? [])]),
 );
 const data = dataByLeague[LEAGUES[0]];
 
@@ -748,10 +791,33 @@ for (const row of latestByPlayer.values()) {
   nameCount.set(k, (nameCount.get(k) ?? 0) + 1);
 }
 
+// Players whose latest season is in an archive era share one card per league:
+// ~1,700 retired NBA players with their own would take the build past the
+// 4,000-card ceiling the gate enforces, for pages almost nobody unfurls.
+for (const lg of LEAGUES) {
+  const seasons = [...ARCHIVE_SEASONS[lg]].sort();
+  if (!seasons.length) continue;
+  const values = seasons.flatMap((s) => (dataByLeague[lg].shotValue[s] ?? []).map((r) => r.poe100));
+  await renderPng(
+    layerCard({
+      leagues: [lg],
+      kicker: `${seasons[0]} to ${seasons[seasons.length - 1]}`,
+      headline: "Every player, back to the archive",
+      scale: { ...symRange(values), unit: "points over expected / 100" },
+    }),
+    join(DIST, "og", `archive-${lg}.png`),
+  );
+}
+
 let n = 0;
+let playerCards = 0;
 for (const row of latestByPlayer.values()) {
-  const img = `p-${row.lg}-${row.id}.png`;
-  await renderPng(card(row), join(DIST, "og", img));
+  const archived = ARCHIVE_SEASONS[row.lg].has(row.season);
+  const img = archived ? `archive-${row.lg}.png` : `p-${row.lg}-${row.id}.png`;
+  if (!archived) {
+    await renderPng(card(row), join(DIST, "og", img));
+    playerCards++;
+  }
   const sv = svRow.get(`${row.lg}:${row.id}:${row.season}`);
   const league = LEAGUE_LABEL[row.lg];
   const who =
@@ -1419,14 +1485,26 @@ for (const lg of LEAGUES) {
   // one — a page that ranks one official is not a ranking.
   const refRows = (season) => (d.referees[season] ?? []).length;
   const refImg = `refs-${lg}.png`;
+  // Officials are shown against the expected whistle of their games, shrunk by
+  // the measured reliability (referees.py). Leagues with too few officials to
+  // measure that (EuroCup, GBL) carry the raw figure, and say so.
+  const rel = d.meta.referees?.reliability ?? {};
+  const relLine = rel.season != null
+    ? `<p>One season of an official is ${rel.season.toFixed(2)} reliable (odd ` +
+      `against even games), so each figure is pulled toward the league by how ` +
+      `much of it is noise, with a 90% range.` +
+      (rel.career != null ? ` A career is ${rel.career.toFixed(2)} reliable.` : "") +
+      `</p>`
+    : `<p>Too few ${esc(label)} officials qualify to measure how much of this ` +
+      `is noise, so the figures are unshrunk.</p>`;
   await renderPng(
     layerCard({
       leagues: [lg],
       kicker: "officials",
       headline: "Whose games run hot.",
       scale: {
-        ...symRange(Object.values(d.referees ?? {}).flat().map((r) => r.diff)),
-        unit: "drawn free throws / 100 vs the season rate",
+        ...symRange(Object.values(d.referees ?? {}).flat().map((r) => r.est ?? r.diff)),
+        unit: "free throws / 100 over the expected whistle",
       },
     }),
     join(DIST, "og", refImg),
@@ -1447,8 +1525,8 @@ for (const lg of LEAGUES) {
             "Descriptive, never per player.",
           ])
         : fit([
-            `The ${n} ${label} officials who worked enough games in ${shown}, ranked by drawn free throws per 100 possessions.`,
-            `Against the season league rate of ${d.meta.leagueRateBySeason[shown].toFixed(1)}.`,
+            `The ${n} ${label} officials who worked enough games in ${shown}, ranked by free throws over the expected whistle of their games.`,
+            "What the players would draw from where they shot, with a 90% range.",
             "Descriptive and league-level, never per player.",
             "League-level only, never per player.",
             "Descriptive, not causal.",
@@ -1457,12 +1535,13 @@ for (const lg of LEAGUES) {
       image: refImg,
       canonical,
       block: (() => {
-        const rows = [...(d.referees[shown] ?? [])]
-          .sort((a, b) => b.diff - a.diff)
-          .slice(0, ROWS_SHOWN)
-          .map((r, i) => [i + 1, r.name, r.games, r.per100.toFixed(1),
-                          signed(r.diff)]);
-        const rate = d.meta.leagueRateBySeason[shown];
+        const ranked = [...(d.referees[shown] ?? [])]
+          .sort((a, b) => (b.est ?? b.diff) - (a.est ?? a.diff))
+          .slice(0, ROWS_SHOWN);
+        const rows = ranked.map((r, i) => [i + 1, r.name, r.games, r.per100.toFixed(1),
+          signed(r.est ?? r.diff),
+          r.est != null ? `${signed(r.lo)} to ${signed(r.hi)}` : "—"]);
+        const rate = d.meta.referees.league[shown];
         return staticBlock({
           h1: `${label} referees, ${shown}`,
           parts: [
@@ -1472,38 +1551,45 @@ for (const lg of LEAGUES) {
                 ? `Too few ${esc(label)} officials worked enough games in ` +
                   `${esc(shown)} to rank, so this season has no officiating table. ` +
                   `Every other season and league on the site does.`
-                : `${esc(String(rows[0][1]))} worked the highest drawn-free-throw ` +
-                  `rate of the ${n} qualifying ${esc(label)} officials in ` +
-                  `${esc(shown)}, at <strong>${esc(String(rows[0][3]))}</strong> per ` +
-                  `100 possessions against a league rate of ${rate.toFixed(1)}.`,
+                : `${esc(String(rows[0][1]))}'s games ran furthest over their ` +
+                  `expected whistle among the ${n} qualifying ${esc(label)} officials ` +
+                  `in ${esc(shown)}: <strong>${esc(String(rows[0][4]))} free throws ` +
+                  `per 100 possessions</strong> over what the players would draw ` +
+                  `from where they shot` +
+                  (ranked[0].est != null ? ` (90% range ${esc(String(rows[0][5]))})` : "") +
+                  `, against a league rate of ${rate.toFixed(1)}.`,
             ),
             rows.length
               ? table({
-                  caption: `${label} officials, ${shown}, drawn free throws per 100 ` +
-                           `possessions in the games each worked, against the season ` +
-                           `league rate of ${rate.toFixed(1)}`,
+                  caption: `${label} officials, ${shown}: free throws per 100 ` +
+                           `possessions over the expected whistle of the games each ` +
+                           `worked, with the raw rate (league ${rate.toFixed(1)})`,
                   cols: [{ label: "#" }, { label: "Official" },
                          { label: "Games", numeric: true },
                          { label: "FTA / 100", numeric: true },
-                         { label: "vs league", numeric: true }],
+                         { label: "Over expected", numeric: true },
+                         { label: "90% range", numeric: true }],
                   rows,
                 })
               : "",
+            relLine,
             `<p>Descriptive and league-level only. Player numbers are not ` +
-              `adjusted for individual crews, assignments are not random, and this ` +
-              `site deliberately publishes no player-by-official splits. It does ` +
-              `not show referee bias.</p>`,
+              `adjusted for individual crews, and this site deliberately ` +
+              `publishes no player-by-official splits. It does not show referee ` +
+              `bias.</p>`,
           ],
         });
       })(),
       ld: [
         dataset({
           name: `${label} officiating rates, ${shown}`,
-          description: `Drawn free throws per 100 possessions in the games each ` +
-            `${label} official worked in ${shown}, against the season league rate.`,
+          description: `Free throws per 100 possessions over the expected whistle ` +
+            `of the games each ${label} official worked in ${shown}, shrunk by its ` +
+            `measured reliability, with the raw rate.`,
           lg,
-          variables: ["Drawn free throws per 100 possessions", "Games worked",
-                      "Difference from the season league rate"],
+          variables: ["Free throws over the expected whistle per 100 possessions",
+                      "90% range", "Drawn free throws per 100 possessions",
+                      "Games worked"],
         }),
         breadcrumbs(`/referees/${lg}`, ["Referees", label]),
       ],
@@ -1532,13 +1618,16 @@ for (const lg of LEAGUES) {
     const seasons = prof.seasons ?? [];
     const latest = seasons[seasons.length - 1];
     const det = prof.detail?.[latest];
+    const whistle = (x) => x.est != null
+      ? `${signed(x.est)} (90% range ${signed(x.lo)} to ${signed(x.hi)})`
+      : signed(x.diff);
     shell({
       title: `${prof.name} · ${label} referee`,
       description: det
         ? fit([
-            `${prof.name} worked ${det.games} ${label} games in ${latest}: ${det.per100.toFixed(1)} drawn free throws per 100 possessions against a league ${det.lg.toFixed(1)}.`,
-            "Broken down by quarter and by game script.",
-            "By quarter and by game script.",
+            `${prof.name} worked ${det.games} ${label} games in ${latest}: ${signed(det.est ?? det.diff)} free throws per 100 possessions over the expected whistle.`,
+            `${det.per100.toFixed(1)} per 100 against a league ${det.lg.toFixed(1)}.`,
+            "With quarter and game-script splits.",
             `Over ${det.poss} possessions.`,
           ])
         : fit([
@@ -1555,30 +1644,37 @@ for (const lg of LEAGUES) {
           answer(
             `Do ${prof.name}'s games see more free throws?`,
             det
-              ? `In ${esc(latest)} ${esc(prof.name)} worked ${det.games} ` +
-                `${esc(label)} games at <strong>${det.per100.toFixed(1)} drawn free ` +
-                `throws per 100 possessions</strong>, against a league rate of ` +
-                `${det.lg.toFixed(1)} over the same span.`
+              ? `In ${esc(latest)} ${esc(prof.name)}'s ${det.games} ${esc(label)} ` +
+                `games drew <strong>${esc(whistle(det))} free throws per 100 ` +
+                `possessions</strong> over what their players would draw from where ` +
+                `they shot. Raw: ${det.per100.toFixed(1)} per 100 against a league ` +
+                `rate of ${det.lg.toFixed(1)}.` +
+                (prof.careers ?? []).map((c) => ` Career ${esc(c.from)} to ` +
+                  `${esc(c.to)}, ${c.games} games: ${esc(whistle(c))}.`).join("")
               : `${esc(prof.name)} is a ${esc(label)} official; the profile shows ` +
                 `drawn free throws per 100 possessions in the games worked, by season.`,
           ),
           table({
-            caption: `${prof.name}: drawn free throws per 100 possessions by ` +
-                     `season, against each season's league rate`,
+            caption: `${prof.name}: free throws per 100 possessions over the ` +
+                     `expected whistle by season, with the raw rate and the league's`,
             cols: [{ label: "Season" }, { label: "Games", numeric: true },
-                   { label: "Poss", numeric: true },
+                   { label: "Over expected", numeric: true },
+                   { label: "90% range", numeric: true },
                    { label: "FTA / 100", numeric: true },
                    { label: "League", numeric: true }],
             rows: seasons
               .filter((sn) => prof.detail?.[sn])
               .map((sn) => {
                 const x = prof.detail[sn];
-                return [sn, x.games, x.poss, x.per100.toFixed(1), x.lg.toFixed(1)];
+                return [sn, x.games, signed(x.est ?? x.diff),
+                        x.est != null ? `${signed(x.lo)} to ${signed(x.hi)}` : "—",
+                        x.per100.toFixed(1), x.lg.toFixed(1)];
               }),
           }),
-          `<p><strong>What this does not measure:</strong> assignments are not ` +
-            `random, player numbers are not adjusted for individual crews, and no ` +
-            `player-by-official split is published. It is not evidence of bias.</p>`,
+          `<p><strong>What this does not measure:</strong> player numbers are ` +
+            `not adjusted for individual crews, no player-by-official split is ` +
+            `published, and quarter and game-script leans do not repeat from one ` +
+            `half of an official's games to the other. It is not evidence of bias.</p>`,
         ],
       }),
     });
@@ -2978,5 +3074,5 @@ if (descShort || descLong) {
   );
 }
 
-const cards = 1 + n + (LINEUP_LEAGUES.length ? 1 : 0);
-console.log(`done: ${cards} OG cards (${n} player + site${LINEUP_LEAGUES.length ? " + lineups" : ""}), ${shellCount} HTML shells, sitemap ${urls.length} urls (base ${BASE})`);
+const cards = 1 + playerCards + (LINEUP_LEAGUES.length ? 1 : 0);
+console.log(`done: ${cards} OG cards (${playerCards} player + site${LINEUP_LEAGUES.length ? " + lineups" : ""}), ${n} player pages, ${shellCount} HTML shells, sitemap ${urls.length} urls (base ${BASE})`);

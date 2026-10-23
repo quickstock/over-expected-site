@@ -143,6 +143,14 @@ REQUIRED_ROW_FIELDS = {
     "data-*.json": (["teams", "*", "*"],
                     ["team", "poss", "drawn", "conceded",
                      "sv100", "make100"]),
+    # Referee views (2026-10-23): the board and strip read the estimate and its
+    # range on every row, and the profile merges careers across eras, so a
+    # profile without the key throws in the archive merge.
+    "data-*.json#referees": (["referees", "*", "*"],
+                             ["id", "name", "games", "per100", "diff",
+                              "est", "lo", "hi"]),
+    "data-*.json#refProfiles": (["refProfiles", "*"],
+                                ["name", "seasons", "detail", "careers"]),
     "rapm-*.json": (["players", "*", "*"],
                     ["id", "name", "teams", "possOff", "possDef",
                      "oP", "dP", "netP", "seO", "seD", "netCi", "tier"]),
@@ -180,7 +188,7 @@ def check_row_shapes():
     print("7. layer rows carry every field the UI dereferences")
     checked = 0
     for pattern, (path, required) in REQUIRED_ROW_FIELDS.items():
-        for f in sorted(PUBLIC.glob(pattern)):
+        for f in sorted(PUBLIC.glob(pattern.split("#")[0])):
             data = json.loads(f.read_text())
             rows = _sample_rows(data, path)
             if not rows:
@@ -591,6 +599,51 @@ def check_tests():
             ok(f"{label}: {tail[0]}")
 
 
+def check_archive_index():
+    """15. An archive era's index in the live file matches the archive it
+    describes. The front end decides from the index alone whether a season,
+    player or official needs the archive, so a stale index means a page that
+    waits for data that is not there (or never asks for data that is), with
+    every URL still returning 200."""
+    print("15. archive index matches its archive")
+    found = False
+    for core in sorted(PUBLIC.glob("data-*.json")):
+        if core.stem.endswith("-archive"):
+            continue
+        idx = json.loads(core.read_text())["meta"].get("archive")
+        if not idx:
+            continue
+        found = True
+        code = core.stem[len("data-"):]
+        path = PUBLIC / f"data-{code}-archive.json"
+        if not path.exists():
+            fail(f"{code}: index present but {path.name} missing")
+            continue
+        arch = json.loads(path.read_text())
+        live = json.loads(core.read_text())["meta"]["seasons"]
+        problems = []
+        if idx["seasons"] != arch["meta"]["seasons"]:
+            problems.append("seasons differ")
+        if set(idx["seasons"]) & set(live):
+            problems.append("an archive season is also a live season")
+        if {p[0] for p in idx["players"]} != {r["id"] for r in arch["leaderboard"] if r["pct"] is not None}:
+            problems.append("players differ")
+        if set(idx["refs"]) != set(arch["refProfiles"]):
+            problems.append("officials differ")
+        if idx["refSeasons"] != sorted(s for s, rows in arch["referees"].items() if rows):
+            problems.append("referee seasons differ")
+        missing = [s for s in idx["seasons"] if not (PUBLIC / f"players-{code}-{s}.json").exists()]
+        if missing:
+            problems.append(f"no player chunk for {missing}")
+        if problems:
+            fail(f"{code} archive: " + "; ".join(problems))
+        else:
+            ok(f"{code} archive: {len(idx['seasons'])} seasons, {len(idx['players'])} players, "
+               f"{len(idx['refs'])} officials, index and file agree")
+    if not found:
+        ok("no league ships an archive")
+
+
 def check_og_envelope():
     print("6. OG-card envelope")
     dist_og = SITE / "dist" / "og"
@@ -621,6 +674,7 @@ def main():
     check_static_bodies()
     check_tests()
     check_og_envelope()
+    check_archive_index()
 
     print()
     if failures:

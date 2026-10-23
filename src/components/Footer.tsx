@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
-import { useData, useLeague } from "../data";
+import { seasonOptions, useData, useLeague } from "../data";
 import { LEAGUE_LABEL, leagueDef } from "../leagues";
 import { SITE_LINE } from "../lib/site";
 
 export default function Footer() {
-  const { meta } = useData();
+  const data = useData();
   const { league } = useLeague();
-  const seasons = meta.seasons;
+  const seasons = seasonOptions(data);
   const stat = leagueDef(league).sftaOnly
     ? "Shooting fouls only"
     : "Free throws drawn from personal fouls";

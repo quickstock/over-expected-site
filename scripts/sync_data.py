@@ -41,6 +41,14 @@ SOURCES = {
     "WNBA": (_EURO, "data-WNBA.json", False),
 }
 
+# Archive eras, built once and shipped apart from the live seasons: the NBA's
+# 1997-98 to 2019-20 (NBA_OE/scripts/build_archive.sh). Every page loads every
+# league's live file on boot, so 24 more seasons there would put ~1 MB on each
+# first paint. The archive ships as data-{CODE}-archive.json, fetched the first
+# time a page asks for one of its seasons, players or officials; the live file
+# carries only the index that tells the front end when to ask.
+ARCHIVES = {"NBA": (OE / "NBA_OE" / "site" / "public-archive", "data.json", True)}
+
 # NBA's headline stat values drawn FTs at the league FT rate; the NBA
 # pipeline hardcoded 0.77 in the front end rather than exporting it.
 NBA_LEAGUE_FT = 0.77
@@ -61,7 +69,7 @@ def stringify_nba_ids(data: dict) -> dict:
     return data
 
 
-def build_core(code: str, src_dir: Path, core_name: str, is_int_ids: bool):
+def read_core(code: str, src_dir: Path, core_name: str, is_int_ids: bool) -> dict:
     src = src_dir / core_name
     if not src.exists():
         raise FileNotFoundError(f"{code}: missing core export {src}")
@@ -71,9 +79,45 @@ def build_core(code: str, src_dir: Path, core_name: str, is_int_ids: bool):
     if is_int_ids:
         stringify_nba_ids(data)
         meta.setdefault("leagueFt", NBA_LEAGUE_FT)
+    return data
+
+
+def archive_index(arch: dict) -> dict:
+    """What the live file needs to know about its archive without loading it:
+    the seasons (for season pickers), the seasons with officials (the NBA's
+    start in 2003-04), every player with a qualified archive season as [id,
+    name, latest qualified archive season] (player pages, search: the same
+    rows the live era gives pages to), and every official with an archive
+    profile (referee pages)."""
+    latest = {}
+    for r in arch["leaderboard"]:
+        if r["pct"] is None:
+            continue
+        if r["id"] not in latest or r["season"] > latest[r["id"]][2]:
+            latest[r["id"]] = [r["id"], r["name"], r["season"]]
+    return {
+        "seasons": arch["meta"]["seasons"],
+        "refSeasons": sorted(s for s, rows in arch["referees"].items() if rows),
+        "players": sorted(latest.values()),
+        "refs": sorted(arch.get("refProfiles", {})),
+    }
+
+
+def build_core(code: str, src_dir: Path, core_name: str, is_int_ids: bool):
+    data = read_core(code, src_dir, core_name, is_int_ids)
+    archive = ARCHIVES.get(code)
+    if archive and (archive[0] / archive[1]).exists():
+        arch = read_core(code, *archive)
+        (PUBLIC / f"data-{code}-archive.json").write_text(
+            json.dumps(arch, separators=(",", ":")))
+        data["meta"]["archive"] = archive_index(arch)
+        chunks = copy_players(code, archive[0], arch["meta"]["seasons"], archive[2])
+        print(f"{code} archive: data-{code}-archive.json "
+              f"({len(arch['leaderboard'])} rows, {len(arch['meta']['seasons'])} seasons)"
+              f" + {chunks} player chunks")
     out = PUBLIC / f"data-{code}.json"
     out.write_text(json.dumps(data, separators=(",", ":")))
-    seasons = meta.get("seasons", [])
+    seasons = data["meta"].get("seasons", [])
     return seasons, len(data.get("leaderboard", []))
 
 

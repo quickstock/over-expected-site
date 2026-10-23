@@ -112,9 +112,32 @@ export interface WhistleSplit {
   per100: number;
   /** League per-100 baseline for the same slice (season + quarter/script). */
   lg: number;
+  /** 90% interval on per100, from game-to-game noise in his games. */
+  lo: number;
+  hi: number;
 }
 
-export interface RefSeasonDetail {
+/** An official against the expected whistle of the games he worked (what
+    their players would draw from where they shot), per 100 possessions.
+    `diff` is the raw figure; `est` is shrunk toward the league by the measured
+    reliability, with its 90% interval. `est`/`lo`/`hi` are null where a league
+    has too few officials to measure that (EuroCup, GBL). referees.py. */
+export interface WhistleEstimate {
+  diff: number;
+  est: number | null;
+  lo: number | null;
+  hi: number | null;
+}
+
+/** One era's career for an official (the live seasons, or the archive's). */
+export interface RefCareer extends WhistleEstimate {
+  from: string;
+  to: string;
+  seasons: number;
+  games: number;
+}
+
+export interface RefSeasonDetail extends WhistleEstimate {
   games: number;
   poss: number;
   fta: number;
@@ -131,6 +154,8 @@ export interface RefProfile {
   /** Seasons worked with >= 20 games, ascending. */
   seasons: string[];
   detail: Record<string, RefSeasonDetail>;
+  /** Officials with two or more qualified seasons in an era. */
+  careers: RefCareer[];
 }
 
 export interface SiteData {
@@ -192,6 +217,36 @@ export interface SiteData {
       moversRmse: number;
       moversFlatRmse: number;
     };
+    /** A league with an archive era (the NBA's 1997-98 to 2019-20) lists what
+        data-{CODE}-archive.json holds, so a page knows when to load it:
+        its seasons, the seasons with officials, every player with a qualified
+        archive season as [id, name, latest such season], and every official
+        with an archive profile. `loaded` is set once it has been merged in
+        (lib/archive.ts). */
+    archive?: {
+      seasons: string[];
+      refSeasons: string[];
+      players: [string, string, string][];
+      refs: string[];
+      loaded?: true;
+    };
+    /** The referee views' measured reliability (odd vs even games for a
+        season and for the quarter/script leans, odd vs even seasons for a
+        career) and true spread (SD per 100), from referees.py. Null where a
+        league has too few officials to measure it. */
+    referees?: {
+      qualifyGames: number;
+      reliability: {
+        season: number | null;
+        career: number | null;
+        quarters: number | null;
+        script: number | null;
+      };
+      /** Drawn free throws per 100 over every possession, by season: the pool
+          each official's raw rate is measured on. */
+      league: Record<string, number>;
+      spread: { season: number | null; career: number | null };
+    };
     /** League free throws per attempt by zone, per season: the baseline. */
     dietRates?: Record<string, { rim: number; paint: number; mid: number; three: number }>;
   };
@@ -199,10 +254,10 @@ export interface SiteData {
   distributions: Record<string, number[]>;
   leagueZones: Record<string, { zone: string; area: string; share: number }[]>;
   calibration: CalibrationBin[];
-  /** Per season: officials with >= 20 games, sorted by diff desc. */
+  /** Per season: qualified officials, sorted by est (diff where est is null). */
   referees: Record<
     string,
-    { id: string; name: string; games: number; per100: number; diff: number }[]
+    ({ id: string; name: string; games: number; per100: number } & WhistleEstimate)[]
   >;
   /** Per-official profile, keyed by official id (string). */
   refProfiles: Record<string, RefProfile>;

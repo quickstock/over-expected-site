@@ -1,7 +1,7 @@
 import { useMemo, useTransition } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useData, useLeague } from "../../data";
+import { seasonOptions, useData, useLeague } from "../../data";
 import { leagueDef } from "../../leagues";
 import type { ShotValueRow } from "../../types";
 import { divergingColor } from "../../lib/color";
@@ -72,7 +72,7 @@ export default function ShotValueBoard({ lens, lensControl, season, onSeason }: 
   const [params, setParams] = useSearchParams();
   const [, startTransition] = useTransition();
 
-  const seasons = data.meta.seasons;
+  const seasons = seasonOptions(data);
   const byseason = data.shotValue ?? {};
   const validSorts = SORTS[lens];
   // Explicit sort = the user clicked a column; null = the lens's own

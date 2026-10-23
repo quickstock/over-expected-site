@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -29,13 +30,18 @@ import {
 } from "./leagues";
 import { leagueFromPath, leagueSwitchTarget } from "./routes";
 import { setLeagueTheme } from "./lib/color";
+import { mergeArchive } from "./lib/archive";
 
 export const LEAGUES: League[] = ACTIVE_LEAGUES;
+
+type ArchiveStatus = "loading" | "error";
 
 interface DataStore {
   all: Partial<Record<League, SiteData>>;
   league: League;
   setLeague: (lg: League) => void;
+  archives: Partial<Record<League, ArchiveStatus>>;
+  loadArchive: (lg: League) => void;
 }
 
 const DataContext = createContext<DataStore | null>(null);
@@ -45,6 +51,27 @@ const LS_KEY = "oe-league";
 export function DataProvider({ children }: { children: ReactNode }) {
   const [all, setAll] = useState<Partial<Record<League, SiteData>>>({});
   const [failed, setFailed] = useState<Partial<Record<League, true>>>({});
+  const [archives, setArchives] = useState<Partial<Record<League, ArchiveStatus>>>({});
+
+  // An archive era loads once, on the first page that needs it, and is merged
+  // into the league's dataset (useArchive below decides when). A failed load
+  // stays failed until the page reloads, like a league's live file.
+  const archiveRequested = useRef(new Set<League>());
+  const loadArchive = useCallback((lg: League) => {
+    if (archiveRequested.current.has(lg)) return;
+    archiveRequested.current.add(lg);
+    setArchives((prev) => ({ ...prev, [lg]: "loading" }));
+    fetch(`${import.meta.env.BASE_URL}data-${lg}-archive.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json() as Promise<SiteData>;
+      })
+      .then((arch) => {
+        setAll((cur) => ({ ...cur, [lg]: mergeArchive(cur[lg]!, arch) }));
+        setArchives(({ [lg]: _done, ...rest }) => rest);
+      })
+      .catch(() => setArchives((cur) => ({ ...cur, [lg]: "error" })));
+  }, []);
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
@@ -95,8 +122,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   setLeagueTheme(league);
 
   const store = useMemo(
-    () => (all[league] ? { all, league, setLeague } : null),
-    [all, league, setLeague],
+    () => (all[league] ? { all, league, setLeague, archives, loadArchive } : null),
+    [all, league, setLeague, archives, loadArchive],
   );
 
   if (failed[league]) {
@@ -150,6 +177,36 @@ export function useLeague(): {
 } {
   const { league, setLeague } = useStore();
   return { league, setLeague };
+}
+
+/**
+ * Load a league's archive era when `need` is true and it is not merged yet.
+ * "ready" means nothing is pending: the archive is merged, the league has
+ * none, or it is not needed. Call it unconditionally (hooks), passing the
+ * league or null.
+ */
+export function useArchive(lg: League | null, need: boolean): "ready" | "loading" | "error" {
+  const { all, archives, loadArchive } = useStore();
+  const arch = lg !== null ? all[lg]?.meta.archive : undefined;
+  const pending = need && !!arch && !arch.loaded;
+  useEffect(() => {
+    if (pending) loadArchive(lg!);
+  }, [pending, lg, loadArchive]);
+  if (!pending) return "ready";
+  return archives[lg!] === "error" ? "error" : "loading";
+}
+
+/** Every season a reader can pick for a league: the archive's, before it is
+    loaded, ahead of the live ones. */
+export function seasonOptions(data: SiteData): string[] {
+  const arch = data.meta.archive;
+  return arch && !arch.loaded ? [...arch.seasons, ...data.meta.seasons] : data.meta.seasons;
+}
+
+/** Is this season in a league's archive, not loaded yet? */
+export function inArchive(data: SiteData, season: string | null | undefined): boolean {
+  const arch = data.meta.archive;
+  return !!season && !!arch && !arch.loaded && arch.seasons.includes(season);
 }
 
 /** Every loaded league's dataset (search, cross-league lookup). */

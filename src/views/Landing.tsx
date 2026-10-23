@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useData, useLeague } from "../data";
+import { inArchive, seasonOptions, useArchive, useData, useLeague } from "../data";
 import {
   DEFAULT_BOARD_LENS,
   DEFAULT_LEAGUE_LENS,
@@ -104,10 +104,13 @@ export default function Landing() {
   const { league } = useLeague();
   const def = leagueDef(league);
   useTitle(`Over Expected: ${LEAGUE_LABEL[league]} shot value`);
-  const seasons = data.meta.seasons;
+  const seasons = seasonOptions(data);
   const latest = data.meta.defaultSeason;
   const qualify = data.meta.qualifyPossessions;
   const [season, setSeason] = useState(latest);
+  // Picking an archive season loads the archive; the sections fill in when it
+  // lands.
+  useArchive(league, inArchive(data, season));
 
   // Shot-value pool for the season (already sorted by points over expected).
   const svPool = useMemo(() => data.shotValue?.[season] ?? [], [data.shotValue, season]);
@@ -351,10 +354,11 @@ export default function Landing() {
       {/* officials */}
       <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
         <SectionHead title={`Officials, measured, ${season}`}>
-          Each dot is one official (minimum {def.refMinGames} games): the
-          {def.sftaOnly ? " shooting-foul" : " drawn-FT"} rate in games they
-          worked, against the season's league rate. Descriptive and
-          league-level, never crossed with players.
+          Each dot is one official (minimum {def.refMinGames} games): free
+          throws in the games they worked over what those players would draw
+          from where they shot, pulled toward the league by how much of one
+          season is noise. Descriptive and league-level, never crossed with
+          players.
         </SectionHead>
         <div className="mt-6">
           <RefStrip refs={refs} />

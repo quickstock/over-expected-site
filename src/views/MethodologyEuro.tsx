@@ -523,8 +523,14 @@ export default function MethodologyEuro() {
           get.
         </p>
         <p>
-          On referees: the officiating crew's overall foul tendency is
-          adjusted for as context above. We deliberately do not publish
+          On referees: the referee pages measure each official against the
+          expected whistle of the games they worked: what those players would
+          draw from where they shot, each at their own foul-drawing rate in
+          their other games. One season of an official carries little signal,
+          so every figure is shrunk toward the league by its measured
+          reliability and shown with a 90% range; in leagues with too few
+          officials to measure that, the figures are unshrunk and say so. We
+          deliberately do not publish
           player-by-referee splits. With three officials per game and a few
           dozen shared games per player-referee pair, those tables are noise
           machines that read as accusations; nothing here supports a claim

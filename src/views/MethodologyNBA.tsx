@@ -190,6 +190,29 @@ export default function MethodologyNBA() {
           number of shooting-foul free throws it produced (almost always 0,
           occasionally 2 or 3).
         </p>
+        {meta.archive && (
+          <p>
+            The archive, {meta.archive.seasons[0]} to{" "}
+            {meta.archive.seasons[meta.archive.seasons.length - 1]}, is built by
+            the same pipeline with its own models: every expectation there
+            comes from models trained on that era's seasons, never on today's
+            game, so a 1998 number is measured against the 1998 league. Officials
+            are listed from {meta.archive.refSeasons[0]}, the first season the
+            league's feed names them, and the tracking-based cross-check starts
+            in 2013-14. 2019-20 includes the bubble's seeding games. Each
+            season's models learn from its six nearest seasons, so a 1998 shot
+            is priced on late-1990s basketball. Two things differ from today.
+            Before the 2004-05 hand-check change, foul-drawing leans toward tall
+            players (r 0.20 with height from 1997-98 to 2003-04, against 0.02
+            from 2004-05 on): post-ups drew fouls, and a shot-location baseline
+            cannot see a post-up. And 1996-97, the first season the league's
+            feed carries, is left out: its shot locations are coded differently
+            (a third of its shots sit on the rim point, against a quarter a year
+            later), and its zone model missed by up to 6 points where every
+            other season stays within 2. The model figures on this page describe
+            the current era.
+          </p>
+        )}
       </div>
 
       <H2>Why per possession</H2>
@@ -533,8 +556,14 @@ export default function MethodologyNBA() {
         <p>
           On referees: league-wide officiating is in the baseline through
           each season's zone rates, but a player's individual crews are not.
-          Crew tendencies are shown on the referee pages, measured against
-          game context. We deliberately do not publish
+          The referee pages measure each official against the expected whistle
+          of the games they worked: what those players would draw from where
+          they shot, each at their own foul-drawing rate in their other games.
+          One season of an official is only about a third signal, so every
+          figure is shrunk toward the league by its measured reliability and
+          shown with a 90% range, the career figure leads, and quarter and
+          game-script leans, which do not repeat, are drawn against what the
+          official's overall level predicts. We deliberately do not publish
           player-by-referee splits. With three officials per game and a few
           dozen shared games per player-referee pair, those tables are noise
           machines that read as accusations; nothing here supports a claim

@@ -1,7 +1,7 @@
 import { useMemo, useTransition } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useData, useLeague } from "../../data";
+import { seasonOptions, useData, useLeague } from "../../data";
 import { leagueDef } from "../../leagues";
 import type { LeaderboardRow } from "../../types";
 import { divergingColor, scaleMax } from "../../lib/color";
@@ -73,7 +73,7 @@ export default function FoulDrawingBoard({ lensControl, season, onSeason }: {
   const [params, setParams] = useSearchParams();
   const [, startTransition] = useTransition();
 
-  const seasons = data.meta.seasons;
+  const seasons = seasonOptions(data);
   const qualify = data.meta.qualifyPossessions;
   // Explicit sort = the user clicked a column; null = the board's own
   // headline order (FTAOE/100 desc), which renders with no indicator.

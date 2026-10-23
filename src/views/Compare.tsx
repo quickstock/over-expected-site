@@ -11,7 +11,8 @@
  */
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useData, useLeague, usePlayerChunk, useRapm } from "../data";
+import { useArchive, useData, useLeague, usePlayerChunk, useRapm } from "../data";
+import ArchiveWait from "../components/ArchiveWait";
 import { leagueDef } from "../leagues";
 import type {
   GameLine,
@@ -50,11 +51,19 @@ function PlayerPicker({
   const data = useData();
   const [query, setQuery] = useState("");
 
+  // Latest qualified season per player; players only in a not-yet-loaded
+  // archive come from its index (picking one loads it).
   const players = useMemo(() => {
-    const byId = new Map<string, LeaderboardRow>();
+    const byId = new Map<string, { id: string; name: string; season: string; poss: number }>();
     for (const season of data.meta.seasons) {
       for (const r of data.leaderboard) {
         if (r.season === season && r.pct !== null) byId.set(r.id, r);
+      }
+    }
+    const arch = data.meta.archive;
+    if (arch && !arch.loaded) {
+      for (const [id, name, season] of arch.players) {
+        if (!byId.has(id)) byId.set(id, { id, name, season, poss: 0 });
       }
     }
     return [...byId.values()];
@@ -292,6 +301,11 @@ export default function Compare() {
 
   const aId = params.get("a") || null;
   const bId = params.get("b") || null;
+  // Either player with archive seasons needs the archive for his rows.
+  const archive = useArchive(
+    league,
+    !!data.meta.archive?.players.some((p) => p[0] === aId || p[0] === bId),
+  );
 
   const lensParam = params.get("lens");
   const lens: Lens =
@@ -399,6 +413,8 @@ export default function Compare() {
 
   const aN = a ? lastName(a.name) : "A";
   const bN = b ? lastName(b.name) : "B";
+
+  if (archive !== "ready") return <ArchiveWait status={archive} />;
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-12 sm:px-8 sm:py-16">

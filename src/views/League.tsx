@@ -9,7 +9,7 @@
  */
 import { useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { useData, useDefense, useLeague } from "../data";
+import { inArchive, seasonOptions, useArchive, useData, useDefense, useLeague } from "../data";
 import { ACTIVE_LEAGUES, LEAGUE_LABEL, leagueDef, type League } from "../leagues";
 import {
   DEFAULT_LEAGUE_LENS,
@@ -20,6 +20,7 @@ import {
 } from "../routes";
 import type { DefenseTeamRow, TeamRow } from "../types";
 import { useTitle } from "../lib/useTitle";
+import ArchiveWait from "../components/ArchiveWait";
 import { divergingColor, divergingText } from "../lib/color";
 import { int, signed } from "../lib/format";
 import { useMeasure } from "../lib/useMeasure";
@@ -488,7 +489,6 @@ export default function League() {
   const { league } = useLeague();
   const navigate = useNavigate();
   const def = leagueDef(league);
-  const seasons = data.meta.seasons;
 
   const hasDefense = !!def.layers?.defense;
   const hasCoaching = !!def.layers?.coaching;
@@ -518,9 +518,14 @@ export default function League() {
   const lensValid = !!urlLens && lenses.includes(urlLens as LensKey);
   const lens = (lensValid ? urlLens : fallback) as LensKey;
   const currentSeason = data.meta.defaultSeason;
+  // The defence pillars are a layer, fit on the live seasons only; the base
+  // lenses reach back through the archive.
+  const isDefLens = (DEF_KEYS as readonly string[]).includes(lens);
+  const seasons = isDefLens ? data.meta.seasons : seasonOptions(data);
   const seasonValid = !seasonParam || seasons.includes(seasonParam);
   const season = seasonParam && seasonValid ? seasonParam : currentSeason;
   const leagueValid = !!lg && (ACTIVE_LEAGUES as string[]).includes(lg);
+  const archive = useArchive(league, inArchive(data, seasonParam));
 
   useTitle(
     `${LEAGUE_LABEL[league]} team ${LENS_TITLE_WORD[lens]} ${season} · Over Expected`,
@@ -548,8 +553,8 @@ export default function League() {
       />
     );
   }
+  if (archive !== "ready") return <ArchiveWait status={archive} />;
 
-  const isDefLens = (DEF_KEYS as readonly string[]).includes(lens);
   const baseRows = data.teams[season] ?? [];
   const defRows = defState.status === "ready" ? defState.data.teams[season] ?? [] : [];
   const activeBase = BASE_LENSES.find((l) => l.key === lens);

@@ -4,16 +4,17 @@ import { int, signed } from "../../lib/format";
 import { useMeasure } from "../../lib/useMeasure";
 
 /**
- * Officials as a neutral strip: x = drawn FTA per 100 in their
- * games minus the season league rate. Descriptive league-level fact;
- * deliberately NOT the diverging encoding (these are not player FTAOE
- * values) and deliberately not crossed with players.
+ * Officials as a neutral strip: x = free throws per 100 in their games over
+ * the expected whistle (shrunk by its measured reliability where the league
+ * has enough officials to measure it, raw where not). Descriptive and
+ * league-level; deliberately NOT the diverging encoding (these are not player
+ * FTAOE values) and deliberately not crossed with players.
  */
 export default function RefStrip({
   refs,
   height = 190,
 }: {
-  refs: { id: string; name: string; games: number; per100: number; diff: number }[];
+  refs: { id: string; name: string; games: number; per100: number; diff: number; est: number | null }[];
   height?: number;
 }) {
   const navigate = useNavigate();
@@ -23,7 +24,8 @@ export default function RefStrip({
   const pad = { top: 44, bottom: 30, left: 12, right: 12 };
   const innerW = Math.max(40, width - pad.left - pad.right);
   const midY = pad.top + (height - pad.top - pad.bottom) / 2;
-  const maxAbs = Math.max(1, ...refs.map((r) => Math.abs(r.diff))) * 1.12;
+  const v = (r: { diff: number; est: number | null }) => r.est ?? r.diff;
+  const maxAbs = Math.max(1, ...refs.map((r) => Math.abs(v(r)))) * 1.12;
   const x = (v: number) => pad.left + ((v + maxAbs) / (2 * maxAbs)) * innerW;
 
   const dots = useMemo(() => {
@@ -32,9 +34,9 @@ export default function RefStrip({
     const placed: { px: number; py: number; i: number }[] = [];
     refs
       .map((d, i) => ({ d, i }))
-      .sort((a, b) => a.d.diff - b.d.diff)
+      .sort((a, b) => v(a.d) - v(b.d))
       .forEach(({ d, i }) => {
-        const px = x(d.diff);
+        const px = x(v(d));
         const conflicts = placed.filter((q) => Math.abs(q.px - px) < gap);
         const cands = [0];
         for (const q of conflicts) {
@@ -60,7 +62,7 @@ export default function RefStrip({
   }, [refs, width]);
 
   const extremes = useMemo(() => {
-    const sorted = [...refs].sort((a, b) => b.diff - a.diff);
+    const sorted = [...refs].sort((a, b) => v(b) - v(a));
     return new Set(
       [...sorted.slice(0, 2), ...sorted.slice(-2)].map((r) => r.name),
     );
@@ -161,7 +163,7 @@ export default function RefStrip({
         >
           <div className="font-display font-semibold text-ink">{hovered.name}</div>
           <div className="font-mono tnum text-ink-soft">
-            {signed(hovered.diff, 1)} vs league · {int(hovered.games)} games
+            {signed(v(hovered), 1)} over expected · {int(hovered.games)} games
           </div>
         </div>
       )}

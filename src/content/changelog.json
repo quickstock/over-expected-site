@@ -2,6 +2,16 @@
  "generated": "2026-10-22",
  "entries": [
   {
+   "date": "2026-10-23",
+   "title": "The NBA back to 1997-98",
+   "body": "Twenty-three more NBA seasons, 1997-98 to 2019-20, with all three lenses, teams and, from 2003-04, referees. The archive is built with the same models as today, each season's trained on its six nearest seasons so a 1998 shot is priced on late-1990s basketball, and it loads only when a page asks for it. Players with archive seasons get their whole careers. Before the 2004-05 hand-check change foul-drawing leans toward tall players, because post-ups drew fouls and a shot-location baseline cannot see a post-up; the methodology page has the numbers. 1996-97 is left out: its shot locations are coded differently and skew its zone model. Building it also fixed shots missing from four current-era seasons: about 1,800 a season had no court location and dropped out of shot value."
+  },
+  {
+   "date": "2026-10-23",
+   "title": "Referees, measured against the expected whistle",
+   "body": "Each official is now measured against the expected whistle of the games they worked: what those players would draw from where they shot, each at their own foul-drawing rate in their other games. One season of an official turns out to be mostly noise (about a third signal in the NBA), so every figure is pulled toward the league by how much of it is noise and shown with a 90% range, and profiles lead with the career figure. The quarter and close-game splits stay, drawn against what the official's overall level predicts, because individual leans by quarter or game script do not repeat. Greek Basket League officials, listed in Greek in some games and Latin in others, are no longer merged into one."
+  },
+  {
    "date": "2026-10-22",
    "title": "Explore: plot any two numbers",
    "body": "A chart builder at /explore. Put any two of twelve published numbers on the axes, for one league or all nine, and read the trend and its correlation off the chart. Colour the dots by an over-expected figure, filter by position or possessions, mark players by name, and tap a dot for his numbers. Across leagues it ranks each player within his own league, since over-expected figures are measured against the league they were earned in. The link carries the whole chart, and the chart downloads as an image."

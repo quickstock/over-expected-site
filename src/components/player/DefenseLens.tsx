@@ -94,9 +94,9 @@ export default function DefenseLens({
   if (!row)
     return (
       <p className="mt-10 rounded border border-line-soft bg-wash px-4 py-10 text-center text-sm leading-relaxed text-ink-faint">
-        No adjusted plus-minus for this player in {season}. The lineup layer
-        needs the possession-level rotation data, and it only covers seasons
-        this player appeared in.
+        {seasonRows.length === 0
+          ? `No adjusted plus-minus in ${season}: the lineup layer covers the current era, not the archive.`
+          : `No adjusted plus-minus for this player in ${season}. The lineup layer needs the possession-level rotation data, and it only covers seasons this player appeared in.`}
       </p>
     );
 

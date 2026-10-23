@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useAllData, useLeague } from "../data";
+import { inArchive, seasonOptions, useAllData, useArchive, useLeague } from "../data";
 import { ACTIVE_LEAGUES, LEAGUE_DEFS, LEAGUE_LABEL, type League } from "../leagues";
 import {
   COLOR_KEYS,
@@ -111,11 +111,15 @@ export default function Explore() {
   // ---- season ------------------------------------------------------------
   const seasons = useMemo(() => {
     const s = new Set<string>();
-    for (const lg of leagues) for (const x of all[lg]?.meta.seasons ?? []) s.add(x);
+    for (const lg of leagues) for (const x of all[lg] ? seasonOptions(all[lg]!) : []) s.add(x);
     return [...s].sort();
   }, [all, leagues.join()]);
   const defaultSeason = base?.meta.defaultSeason ?? seasons[seasons.length - 1];
   const season = seasons.includes(params.get("s") ?? "") ? params.get("s")! : defaultSeason;
+  // An archive season (the NBA's 1997-98 to 2019-20) loads the archive; the
+  // chart fills in when it lands.
+  const archiveLeague = leagues.find((lg) => all[lg] && inArchive(all[lg]!, season)) ?? null;
+  useArchive(archiveLeague, archiveLeague !== null);
 
   // ---- axes, colour, filters -------------------------------------------
   const x: StatKey = isStat(params.get("x")) ? (params.get("x") as StatKey) : DEFAULT_PRESET.x;

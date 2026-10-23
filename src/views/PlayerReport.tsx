@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useLeagueData, usePlayerChunk, useProfiles } from "../data";
+import { useArchive, useLeagueData, usePlayerChunk, useProfiles } from "../data";
+import ArchiveWait from "../components/ArchiveWait";
 import { ACTIVE_LEAGUES, LEAGUE_LABEL, type League } from "../leagues";
 import Headshot from "../components/Headshot";
 import { divergingText } from "../lib/color";
@@ -57,6 +58,7 @@ export default function PlayerReport() {
   const [params] = useSearchParams();
   const league = (ACTIVE_LEAGUES as string[]).includes(lg ?? "") ? (lg as League) : "NBA";
   const data = useLeagueData(league);
+  const archive = useArchive(league, !!id && !!data?.meta.archive?.players.some((p) => p[0] === id));
   const seasons = useMemo(
     () =>
       data?.meta.seasons.filter((s) =>
@@ -74,6 +76,7 @@ export default function PlayerReport() {
   useTitle(sv ? `${sv.name}: scouting report` : "Scouting report");
 
   if (!data) return <div className="mx-auto max-w-3xl px-5 py-16 text-sm text-ink-faint">Loading…</div>;
+  if (archive !== "ready") return <ArchiveWait status={archive} />;
   if (!sv || !season) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16 text-sm text-ink-soft">

@@ -1,43 +1,22 @@
 import { useMemo } from "react";
-import type { CSSProperties } from "react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useData, useLeague } from "../data";
+import { inArchive, seasonOptions, useArchive, useData, useLeague } from "../data";
 import { ACTIVE_LEAGUES, LEAGUE_LABEL, leagueDef, type League } from "../leagues";
 import { datedPart, refereesPath } from "../routes";
 import { int, signed } from "../lib/format";
+import IntervalBar, { intervalDomain } from "../components/IntervalBar";
 import { useTitle } from "../lib/useTitle";
+import ArchiveWait from "../components/ArchiveWait";
 import SegmentedControl from "../components/SegmentedControl";
 import SortHeader, { cycleSort } from "../components/SortHeader";
 
-type SortKey = "diff" | "games" | "per100";
+type SortKey = "est" | "games" | "per100";
 
 const SORT_LABEL: Record<SortKey, string> = {
-  diff: "vs league",
+  est: "Over expected",
   games: "Games",
   per100: "FTA/100",
 };
-
-/**
- * Neutral bar centered on the season league rate: right = more drawn
- * free throws than the league saw in their games, left = fewer. Deliberately
- * NOT the warm/cool FTAOE encoding (those are player values, not officials).
- */
-function RefBar({ diff, className = "w-24" }: { diff: number; className?: string }) {
-  const SCALE = 4; // per-100 either side saturates the strip
-  const t = Math.min(Math.abs(diff), SCALE) / SCALE;
-  const fill: CSSProperties = {
-    width: `${(t * 50).toFixed(2)}%`,
-    background: "var(--color-ink-soft)",
-  };
-  if (diff >= 0) fill.left = "50%";
-  else fill.right = "50%";
-  return (
-    <span className={`relative block h-1.5 ${className}`} aria-hidden="true">
-      <span className="absolute inset-y-0 left-1/2 w-px bg-line" />
-      <span className="absolute top-0 h-full rounded-full" style={fill} />
-    </span>
-  );
-}
 
 export default function Referees() {
   const { lg, season: seasonParam } = useParams();
@@ -49,19 +28,25 @@ export default function Referees() {
   // page. League and season are the page's identity, so they are path segments.
   const [params, setParams] = useSearchParams();
 
-  const seasons = data.meta.seasons;
+  // Archive seasons only where officials exist (the NBA lists none before
+  // 2003-04); live seasons all stay, including the thin EuroCup ones.
+  const arch = data.meta.archive;
+  const seasons = seasonOptions(data).filter(
+    (s) => !arch?.seasons.includes(s) || arch.refSeasons.includes(s),
+  );
   const currentSeason = data.meta.defaultSeason;
   const seasonValid = !seasonParam || seasons.includes(seasonParam);
   const season = seasonParam && seasonValid ? seasonParam : currentSeason;
   const leagueValid = !!lg && (ACTIVE_LEAGUES as string[]).includes(lg);
+  const archive = useArchive(league, inArchive(data, seasonParam));
 
   useTitle(`${LEAGUE_LABEL[league]} referees ${season} · Over Expected`);
   // Explicit sort = the user clicked a column; null = the page's own order
-  // (diff desc), which renders with no direction indicator.
-  const explicit = ["diff", "games", "per100"].includes(params.get("sort") ?? "")
+  // (estimate desc), which renders with no direction indicator.
+  const explicit = ["est", "games", "per100"].includes(params.get("sort") ?? "")
     ? (params.get("sort") as SortKey)
     : null;
-  const sort = explicit ?? "diff";
+  const sort = explicit ?? "est";
   const dir = params.get("dir") === "asc" ? "asc" : "desc";
 
   const onSort = (k: SortKey) => {
@@ -77,17 +62,23 @@ export default function Referees() {
     setParams(p, { replace: false });
   };
 
-  const leagueRate = data.meta.leagueRateBySeason[season];
+  const leagueRate = data.meta.referees!.league[season];
+  const rel = data.meta.referees?.reliability;
+  // The shrunk estimate where the league has enough officials to measure its
+  // noise; the raw figure where it has not (EuroCup, GBL).
+  const value = (r: { est: number | null; diff: number }) => r.est ?? r.diff;
   const rows = useMemo(() => {
     const mul = dir === "asc" ? 1 : -1;
-    return [...(data.referees[season] ?? [])].sort(
-      (a, b) => mul * (a[sort] - b[sort]),
-    );
+    const key = (r: (typeof data.referees)[string][number]) =>
+      sort === "est" ? value(r) : r[sort];
+    return [...(data.referees[season] ?? [])].sort((a, b) => mul * (key(a) - key(b)));
   }, [data.referees, season, sort, dir]);
+  const domain = intervalDomain(rows.map((r) => ({ value: value(r), lo: r.lo, hi: r.hi })));
 
   // Every hook runs before this point on every path (React #310).
   if (!leagueValid) return <Navigate to={refereesPath(league)} replace />;
   if (!seasonValid) return <Navigate to={refereesPath(lg as League)} replace />;
+  if (archive !== "ready") return <ArchiveWait status={archive} />;
 
   return (
     <div>
@@ -112,7 +103,7 @@ export default function Referees() {
         </div>
         {/* mobile sort */}
         <div className="mx-auto flex max-w-4xl items-center gap-4 px-5 pb-3 sm:hidden">
-          {(["diff", "games", "per100"] as SortKey[]).map((k) => (
+          {(["est", "games", "per100"] as SortKey[]).map((k) => (
             <SortHeader key={k} k={k} label={SORT_LABEL[k]} sort={explicit} dir={dir} onSort={onSort} />
           ))}
         </div>
@@ -123,25 +114,49 @@ export default function Referees() {
           Referees
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
-          Drawn free throws per 100 possessions in the games each
-          official worked, {season}, against the season league rate of{" "}
-          <span className="font-mono tnum">{leagueRate.toFixed(1)}</span>. Minimum{" "}
-          {refMinGames}
-          games. Tap a name for how the whistle moves by quarter and by game
-          script.
+          Free throws per 100 possessions in the games each official worked,{" "}
+          {season}, over their expected whistle: what those games' players
+          would draw from where they shot. Minimum {refMinGames} games; the
+          raw rate is in grey, against a league{" "}
+          <span className="font-mono tnum">{leagueRate.toFixed(1)}</span>.
+        </p>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
+          {rel?.season != null ? (
+            <>
+              One season of an official is{" "}
+              <span className="font-mono tnum">{rel.season.toFixed(2)}</span>{" "}
+              reliable (their odd games against their even ones), so each figure is
+              pulled toward the league by how much of it is noise, and the line
+              is its 90% range.
+              {rel.career != null && (
+                <>
+                  {" "}A career is{" "}
+                  <span className="font-mono tnum">{rel.career.toFixed(2)}</span>{" "}
+                  reliable: tap a name for it.
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              Too few {LEAGUE_LABEL[league]} officials qualify to measure how much
+              of this is noise, so these figures are unshrunk: read them as
+              loose.
+            </>
+          )}
         </p>
 
         {/* desktop header */}
-        <div className="mt-8 hidden grid-cols-[2.75rem_minmax(0,1fr)_5rem_9rem_5.5rem] items-end gap-x-4 border-b border-line pb-2 sm:grid">
+        <div className="mt-8 hidden grid-cols-[2.75rem_minmax(0,1fr)_4rem_4.5rem_9rem_7rem] items-end gap-x-4 border-b border-line pb-2 sm:grid">
           <span />
           <span className="font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
             Official
           </span>
           <SortHeader k="games" label={SORT_LABEL.games} sort={explicit} dir={dir} onSort={onSort} className="text-right" />
-          <span className="text-right font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
-            vs league rate
+          <SortHeader k="per100" label={SORT_LABEL.per100} sort={explicit} dir={dir} onSort={onSort} className="text-right" />
+          <span className="text-center font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
+            90% range
           </span>
-          <SortHeader k="diff" label={SORT_LABEL.diff} sort={explicit} dir={dir} onSort={onSort} className="text-right" />
+          <SortHeader k="est" label={SORT_LABEL.est} sort={explicit} dir={dir} onSort={onSort} className="text-right" />
         </div>
 
         {rows.length === 0 ? (
@@ -157,7 +172,7 @@ export default function Referees() {
                   className="group block border-b border-line-soft transition-colors duration-150 hover:bg-wash focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink"
                 >
                   {/* desktop row */}
-                  <div className="hidden grid-cols-[2.75rem_minmax(0,1fr)_5rem_9rem_5.5rem] items-center gap-x-4 py-3 sm:grid">
+                  <div className="hidden grid-cols-[2.75rem_minmax(0,1fr)_4rem_4.5rem_9rem_7rem] items-center gap-x-4 py-3 sm:grid">
                     <span className="text-right font-mono tnum text-sm text-ink-faint">
                       {i + 1}
                     </span>
@@ -167,14 +182,12 @@ export default function Referees() {
                     <span className="text-right font-mono tnum text-sm text-ink-soft">
                       {int(r.games)}
                     </span>
-                    <span className="flex items-center justify-end gap-3">
-                      <span className="font-mono tnum text-xs text-ink-faint">
-                        {r.per100.toFixed(1)}
-                      </span>
-                      <RefBar diff={r.diff} />
+                    <span className="text-right font-mono tnum text-xs text-ink-faint">
+                      {r.per100.toFixed(1)}
                     </span>
+                    <IntervalBar value={value(r)} lo={r.lo} hi={r.hi} domain={domain} className="w-full" />
                     <span className="text-right font-mono tnum text-sm text-ink">
-                      {signed(r.diff, 1)}
+                      {signed(value(r), 1)}
                     </span>
                   </div>
                   {/* mobile row */}
@@ -187,14 +200,14 @@ export default function Referees() {
                         {r.name}
                       </span>
                       <span className="font-mono tnum text-sm text-ink">
-                        {signed(r.diff, 1)}
+                        {signed(value(r), 1)}
                       </span>
                     </span>
                     <span className="flex items-center gap-2.5 pl-9">
                       <span className="min-w-0 flex-1 truncate text-xs text-ink-soft">
                         {int(r.games)} games · {r.per100.toFixed(1)} per 100
                       </span>
-                      <RefBar diff={r.diff} className="w-16" />
+                      <IntervalBar value={value(r)} lo={r.lo} hi={r.hi} domain={domain} className="w-24" />
                     </span>
                   </div>
                 </Link>
@@ -205,9 +218,8 @@ export default function Referees() {
 
         <p className="mt-6 max-w-2xl text-xs leading-relaxed text-ink-faint">
           Descriptive, league-level only. Player numbers are not adjusted for
-          individual crews, and assignments are not random (workloads and
-          slates differ). This site deliberately
-          does not publish player-by-official splits.{" "}
+          individual crews, and this site deliberately does not publish
+          player-by-official splits.{" "}
           <Link
             to="/methodology"
             className="underline underline-offset-2 transition-colors duration-150 hover:text-ink"

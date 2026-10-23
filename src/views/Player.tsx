@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useLeagueData, usePlayerChunk, useRapm } from "../data";
+import { useArchive, useLeagueData, usePlayerChunk, useRapm } from "../data";
+import ArchiveWait from "../components/ArchiveWait";
 import { ACTIVE_LEAGUES, LEAGUE_LABEL, ftNoun, leagueDef, type League } from "../leagues";
 import type {
   FoulBreakdown,
@@ -313,6 +314,19 @@ export default function Player() {
 
   const qualify = data?.meta.qualifyPossessions ?? 0;
 
+  // A player with any archive season (the NBA's 1997-98 to 2019-20) needs the
+  // archive for his whole career, and is ranked against careers across both
+  // eras. Everyone else is ranked on the live seasons only, archive loaded or
+  // not, so the same page never shows a different career rank depending on
+  // what the reader opened before it.
+  const arch = data?.meta.archive;
+  const archivePlayer = !!id && !!arch?.players.some((p) => p[0] === id);
+  const archive = useArchive(league, archivePlayer);
+  const careerExcludes = useMemo(
+    () => new Set(archivePlayer ? [] : arch?.seasons ?? []),
+    [archivePlayer, arch],
+  );
+
   // Qualified player-season rows for this id, in league season order.
   const rows = useMemo(() => {
     if (!data) return [];
@@ -333,7 +347,7 @@ export default function Player() {
     >();
     if (!data) return { byId, pool: [] as number[] };
     for (const r of data.leaderboard) {
-      if (r.pct === null) continue;
+      if (r.pct === null || careerExcludes.has(r.season)) continue;
       const c =
         byId.get(r.id) ?? { poss: 0, ftaoe: 0, fta: 0, xfta: 0, n: 0 };
       c.poss += r.poss;
@@ -349,7 +363,7 @@ export default function Player() {
     }
     pool.sort((a, b) => a - b);
     return { byId, pool };
-  }, [data]);
+  }, [data, careerExcludes]);
 
   const seasons = rows.map((r) => r.season);
   const requested = params.get("season");
@@ -428,6 +442,7 @@ export default function Player() {
         <div className="mt-6 h-64 animate-pulse rounded bg-wash" />
       </div>
     );
+  if (archive !== "ready") return <ArchiveWait status={archive} />;
   if (!row || !season) return <NotFound league={league} qualify={qualify} />;
 
   const myCareer = career.byId.get(id ?? "");
@@ -582,7 +597,9 @@ export default function Player() {
               label: `Career, ${myCareer?.n ?? 0} seasons`,
               per100: careerPer100 ?? 0,
               pct: careerPct,
-              note: `Career rank among players with at least ${int(def.careerMinPoss)} possessions across qualified seasons.`,
+              note: `Career rank among players with at least ${int(def.careerMinPoss)} possessions across qualified seasons${
+                arch ? ` since ${archivePlayer ? arch.seasons[0] : data.meta.seasons.find((s) => !arch.seasons.includes(s))}` : ""
+              }.`,
             },
           ]}
         />

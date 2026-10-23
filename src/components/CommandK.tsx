@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAllData, LEAGUES } from "../data";
-import { LEAGUE_LABEL, type League, type LeaderboardRow } from "../types";
+import { LEAGUE_LABEL, type League } from "../types";
 import { Delta } from "./Delta";
 import { int, searchKey } from "../lib/format";
+
+interface Hit {
+  lg: League;
+  id: string;
+  name: string;
+  season: string;
+  per100: number | null;
+  poss: number;
+  sub: string;
+}
 
 /**
  * Global player search. Cmd/Ctrl+K or the nav button opens it; type a
@@ -23,19 +33,33 @@ export default function CommandK({
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Latest qualified season per player, across both leagues.
+  // Latest qualified season per player, across every league. Players who
+  // only appear in a not-yet-loaded archive come from its index (name and
+  // latest season, no numbers), so the NBA's 1997-98 to 2019-20 is
+  // searchable without loading it.
   const players = useMemo(() => {
-    const rows: (LeaderboardRow & { lg: League })[] = [];
+    const rows: Hit[] = [];
     for (const lg of LEAGUES) {
       const data = all[lg];
       if (!data) continue;
-      const byId = new Map<string, LeaderboardRow>();
+      const byId = new Map<string, Hit>();
       for (const season of data.meta.seasons) {
         for (const r of data.leaderboard) {
-          if (r.season === season && r.pct !== null) byId.set(r.id, r);
+          if (r.season === season && r.pct !== null)
+            byId.set(r.id, {
+              lg, id: r.id, name: r.name, season: r.season, per100: r.per100, poss: r.poss,
+              sub: `${r.teams.join(" · ")} · ${int(r.poss)} poss`,
+            });
         }
       }
-      for (const r of byId.values()) rows.push({ ...r, lg });
+      const arch = data.meta.archive;
+      if (arch && !arch.loaded) {
+        for (const [id, name, season] of arch.players) {
+          if (!byId.has(id))
+            byId.set(id, { lg, id, name, season, per100: null, poss: 0, sub: "archive" });
+        }
+      }
+      rows.push(...byId.values());
     }
     return rows;
   }, [all]);
@@ -61,7 +85,7 @@ export default function CommandK({
 
   if (!open) return null;
 
-  const go = (r: LeaderboardRow & { lg: League }) => {
+  const go = (r: Hit) => {
     onClose();
     navigate(`/player/${r.lg}/${r.id}?season=${encodeURIComponent(r.season)}`);
   };
@@ -103,7 +127,7 @@ export default function CommandK({
         {results.length > 0 && (
           <ul className="max-h-80 overflow-y-auto py-1">
             {results.map((r, i) => (
-              <li key={r.id}>
+              <li key={`${r.lg}:${r.id}`}>
                 <button
                   type="button"
                   onClick={() => go(r)}
@@ -117,11 +141,10 @@ export default function CommandK({
                       {r.name}
                     </span>
                     <span className="block text-xs text-ink-soft">
-                      {LEAGUE_LABEL[r.lg]} · {r.season} ·{" "}
-                      {r.teams.join(" · ")} · {int(r.poss)} poss
+                      {LEAGUE_LABEL[r.lg]} · {r.season} · {r.sub}
                     </span>
                   </span>
-                  <Delta per100={r.per100} className="text-base" />
+                  {r.per100 !== null && <Delta per100={r.per100} className="text-base" />}
                 </button>
               </li>
             ))}

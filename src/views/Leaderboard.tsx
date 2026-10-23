@@ -1,5 +1,5 @@
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { useData, useLeague } from "../data";
+import { inArchive, seasonOptions, useArchive, useData, useLeague } from "../data";
 import { ACTIVE_LEAGUES, LEAGUE_LABEL, type League } from "../leagues";
 import {
   BOARD_LENSES,
@@ -12,6 +12,7 @@ import {
 } from "../routes";
 import { useTitle } from "../lib/useTitle";
 import SegmentedControl from "../components/SegmentedControl";
+import ArchiveWait from "../components/ArchiveWait";
 import FoulDrawingBoard from "./boards/FoulDrawingBoard";
 import ShotValueBoard from "./boards/ShotValueBoard";
 
@@ -42,7 +43,7 @@ export default function Leaderboard() {
   const navigate = useNavigate();
 
   const lensKey = boardLensKey(lensParam);
-  const seasons = data.meta.seasons;
+  const seasons = seasonOptions(data);
 
   // The evergreen (season-less) URL means the current season. The shot-value
   // lenses fall back to the latest season that actually carries shot-value
@@ -58,6 +59,7 @@ export default function Leaderboard() {
   const seasonValid = !seasonParam || seasons.includes(seasonParam);
   const season = seasonParam && seasonValid ? seasonParam : currentSeason;
   const leagueValid = !!lg && (ACTIVE_LEAGUES as string[]).includes(lg);
+  const archive = useArchive(league, inArchive(data, seasonParam));
 
   useTitle(
     `${LENS_TITLE[lensKey ?? "value"]} · ${LEAGUE_LABEL[league]} ${season} · Over Expected`,
@@ -71,6 +73,7 @@ export default function Leaderboard() {
   if (!seasonValid) {
     return <Navigate to={boardPath(lg as League, lensParam!)} replace />;
   }
+  if (archive !== "ready") return <ArchiveWait status={archive} />;
 
   const go = (lensSlug: string, s: string) =>
     navigate(boardPath(league, lensSlug, datedPart(s, currentSeason)));
