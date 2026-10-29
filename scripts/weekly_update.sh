@@ -137,6 +137,7 @@ step "NBA per-shot xFG"        $PY build_shots_xfg.py
 step "NBA export"              $PY export_site_data.py
 step "NBA EXPORT GATE"         $PY scripts/validate_export.py
 step "NBA weekly post"         $PY export_weekly.py
+step "NBA shot sample"         $PY export_shots.py
 
 # ---------------------------------------------------------------- NBA layers
 # Rotations are optional (build_stints falls back to the pbp sub timeline)
@@ -167,6 +168,7 @@ step "Euro EL translation"     $PY build_translation.py
 step "Euro VALIDATION GATE"    $PY validate.py
 step "Euro export"             $PY export_site_data.py
 step "Euro weekly post"        $PY export_weekly.py
+step "Euro shot sample"        $PY export_shots.py
 pull "Euro headshots"          $PY pull_headshots.py
 
 # ---------------------------------------------------------------- site
@@ -183,13 +185,15 @@ deploy() {
 step "deploy"                  deploy
 
 # The deploy reported success; confirm the live site serves this build's data.
-LOCAL_MD5="$(md5 -q public/data-NBA.json)"
+# Byte comparison, so a failed fetch counts as a mismatch. (It compared md5
+# sums until 2026-10-29, but md5 lives in /sbin, off this PATH: both sums came
+# out empty, matched, and the check passed without checking anything.)
+LIVE=""
 for attempt in 1 2 3 4 5; do
-  LIVE_MD5="$(curl -s https://overexpected.com/data-NBA.json | md5 -q)"
-  [ "$LIVE_MD5" = "$LOCAL_MD5" ] && break
+  curl -sf https://overexpected.com/data-NBA.json | cmp -s - public/data-NBA.json && { LIVE=1; break; }
   sleep 30
 done
-if [ "$LIVE_MD5" != "$LOCAL_MD5" ]; then
+if [ -z "$LIVE" ]; then
   echo "FAILED: live data-NBA.json does not match this build"
   email "Over Expected weekly update: deploy not live" \
     "The deploy reported success but overexpected.com/data-NBA.json does not match the new build after 5 checks.${WARNINGS:+ Pull warnings:$WARNINGS}"

@@ -33,7 +33,6 @@ export function mergeArchive(live: SiteData, arch: SiteData): SiteData {
       ...live.meta,
       archive: { ...live.meta.archive!, loaded: true },
       seasons,
-      nPossessions: live.meta.nPossessions + arch.meta.nPossessions,
       leagueRateBySeason: { ...arch.meta.leagueRateBySeason, ...live.meta.leagueRateBySeason },
       dietRates: { ...arch.meta.dietRates, ...live.meta.dietRates },
       // the live era's referee reliabilities, with both eras' league rates

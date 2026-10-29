@@ -122,7 +122,6 @@ function mergeArchive(live, arch) {
       ...live.meta,
       archive: { ...live.meta.archive, loaded: true },
       seasons: [...new Set([...arch.meta.seasons, ...live.meta.seasons])].sort(),
-      nPossessions: live.meta.nPossessions + arch.meta.nPossessions,
       leagueRateBySeason: { ...arch.meta.leagueRateBySeason, ...live.meta.leagueRateBySeason },
       dietRates: { ...arch.meta.dietRates, ...live.meta.dietRates },
       referees: live.meta.referees && {

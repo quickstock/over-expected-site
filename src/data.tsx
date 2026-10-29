@@ -21,6 +21,7 @@ import type {
   CoachingData,
   DefenseData,
   SiteData,
+  ShotSample,
   ValueData,
 } from "./types";
 import {
@@ -325,6 +326,12 @@ function useLayerFile<T>(file: string | null): {
   if (data) return { status: "ready", data };
   if (layerPromises.has(file)) return { status: "loading" };
   return { status: "error" };
+}
+
+/** The homepage's shot sample for one league-season, fetched once the page
+    has painted (the hero draws it behind the title). */
+export function useShotSample(league: League, season: string) {
+  return useLayerFile<ShotSample>(`shots-${league}-${season}.json`);
 }
 
 export type RapmState =

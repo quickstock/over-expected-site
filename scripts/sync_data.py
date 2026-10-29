@@ -111,6 +111,10 @@ def build_core(code: str, src_dir: Path, core_name: str, is_int_ids: bool):
         (PUBLIC / f"data-{code}-archive.json").write_text(
             json.dumps(arch, separators=(",", ":")))
         data["meta"]["archive"] = archive_index(arch)
+        # The live file speaks for every season the site carries: the homepage
+        # names 1997-98 onward before the archive is fetched, so its count does
+        # too. Merging the archive in therefore adds nothing to it.
+        data["meta"]["nPossessions"] += arch["meta"]["nPossessions"]
         chunks = copy_players(code, archive[0], arch["meta"]["seasons"], archive[2])
         print(f"{code} archive: data-{code}-archive.json "
               f"({len(arch['leaderboard'])} rows, {len(arch['meta']['seasons'])} seasons)"
@@ -156,6 +160,11 @@ LAYER_SOURCES = [
     # European exports only: NBA and WNBA faces come straight off their own CDNs
     # by player id and need no map.
     ("headshots-*.json", _EURO, "headshots-chunks-none-*.json"),
+    # homepage shot samples, one per league-season (export_shots.py in each
+    # pipeline), the NBA archive's beside its own export.
+    ("shots-*-*.json", _NBA_PUBLIC, "shots-chunks-none-*.json"),
+    ("shots-*-*.json", OE / "NBA_OE" / "site" / "public-archive", "shots-chunks-none-*.json"),
+    ("shots-*-*.json", _EURO, "shots-chunks-none-*.json"),
     # calibration is exported straight into site/public by the calibration
     # project, so it needs no copy step; listed here for the record only.
 ]

@@ -644,6 +644,32 @@ def check_archive_index():
         ok("no league ships an archive")
 
 
+def check_shot_samples():
+    """16. Every season a league lists, archive included, has its homepage
+    shot sample. The hero draws behind the title from it; a missing file
+    leaves that season's hero bare while the page still returns 200."""
+    print("16. homepage shot samples")
+    for core in sorted(PUBLIC.glob("data-*.json")):
+        if core.stem.endswith("-archive"):
+            continue
+        code = core.stem[len("data-"):]
+        meta = json.loads(core.read_text())["meta"]
+        seasons = meta["seasons"] + (meta.get("archive") or {}).get("seasons", [])
+        missing = [s for s in seasons if not (PUBLIC / f"shots-{code}-{s}.json").exists()]
+        if missing:
+            fail(f"{code}: no shot sample for {missing}")
+            continue
+        bad = []
+        for s in seasons:
+            d = json.loads((PUBLIC / f"shots-{code}-{s}.json").read_text())
+            if not (len(d["x"]) == len(d["y"]) == len(d["m"]) > 0):
+                bad.append(s)
+        if bad:
+            fail(f"{code}: x, y and m lengths disagree or are empty in {bad}")
+        else:
+            ok(f"{code}: {len(seasons)} seasons sampled")
+
+
 def check_og_envelope():
     print("6. OG-card envelope")
     dist_og = SITE / "dist" / "og"
@@ -675,6 +701,7 @@ def main():
     check_tests()
     check_og_envelope()
     check_archive_index()
+    check_shot_samples()
 
     print()
     if failures:

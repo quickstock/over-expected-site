@@ -21,6 +21,7 @@ import ExpectedVsActual from "../components/charts/ExpectedVsActual";
 import RefStrip from "../components/charts/RefStrip";
 import TeamScatter from "../components/charts/TeamScatter";
 import WeeklyTeaser from "../components/WeeklyTeaser";
+import ShotCloud from "../components/ShotCloud";
 import Headshot from "../components/Headshot";
 import { PRESETS, explorePath } from "../lib/explore";
 
@@ -107,7 +108,10 @@ export default function Landing() {
   const seasons = seasonOptions(data);
   const latest = data.meta.defaultSeason;
   const qualify = data.meta.qualifyPossessions;
-  const [season, setSeason] = useState(latest);
+  const [picked, setSeason] = useState(latest);
+  // The pick survives a league switch, and not every league has every season
+  // (the NBA archive reaches 1997-98, BBL starts 2023-24).
+  const season = seasons.includes(picked) ? picked : latest;
   // Picking an archive season loads the archive; the sections fill in when it
   // lands.
   useArchive(league, inArchive(data, season));
@@ -165,9 +169,17 @@ export default function Landing() {
   const refs = data.referees?.[season] ?? [];
 
   return (
+    // The hero's court runs past the content column; clipped here, not at
+    // the column, so it reaches the window edge without a sideways scroll.
+    <div className="overflow-x-clip">
     <div className="mx-auto max-w-4xl px-5 sm:px-8">
       {/* hero: the thesis, this week's games, three lenses */}
-      <section className="pt-10 sm:pt-16">
+      <section className="relative isolate pt-10 sm:pt-16">
+        <ShotCloud
+          league={league}
+          season={season}
+          className="pointer-events-none absolute -right-36 -top-4 -z-10 w-[22rem] opacity-70 sm:-right-28 sm:top-0 sm:w-[40rem] sm:opacity-100"
+        />
         <p className="font-mono tnum text-xs text-ink-faint">
           {LEAGUE_LABEL[league]} · {seasons[0]} to{" "}
           {seasons[seasons.length - 1]} · {int(data.meta.nPossessions)}{" "}
@@ -401,6 +413,7 @@ export default function Landing() {
           )}
         </div>
       </section>
+    </div>
     </div>
   );
 }

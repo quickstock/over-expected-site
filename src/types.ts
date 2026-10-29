@@ -379,6 +379,15 @@ export interface ValueData {
   players: Record<string, ValueRow[]>;
 }
 
+/** A season's homepage shot sample (shots-{LG}-{season}.json): parallel
+    arrays, centimetres from the hoop (x across, y out from the baseline),
+    and one "1"/"0" per shot for made/missed. */
+export interface ShotSample {
+  x: number[];
+  y: number[];
+  m: string;
+}
+
 export interface RapmData {
   meta: {
     layer: "lineups";

@@ -47,7 +47,7 @@ export default function WeeklyTeaser() {
   return (
     <Link
       to={weeklyPath()}
-      className={`group ${slot} rounded-md border border-line px-4 py-4 transition-colors duration-150 hover:border-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:px-5`}
+      className={`group ${slot} rounded-md border border-line bg-paper px-4 py-4 transition-colors duration-150 hover:border-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:px-5`}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="font-display text-sm font-semibold text-ink">
