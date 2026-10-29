@@ -31,6 +31,8 @@ import Weekly from "./views/Weekly";
 import PlayerReport from "./views/PlayerReport";
 import About from "./views/About";
 import Explore from "./views/Explore";
+import Game from "./views/Game";
+import Games from "./views/Games";
 import { GlossaryTermPage as GlossaryTermPage } from "./views/Glossary";
 
 import { useLeague } from "./data";
@@ -192,6 +194,9 @@ export default function App() {
           <Route path="/referees" element={<Navigate to={LEGACY_TARGETS.referees} replace />} />
           <Route path="/referees/:lg" element={<Referees />} />
           <Route path="/referees/:lg/:season" element={<Referees />} />
+          <Route path="/games/:lg" element={<Games />} />
+          <Route path="/games/:lg/:season" element={<Games />} />
+          <Route path="/game/:lg/:season/:id" element={<Game />} />
           <Route path="/referee/:id" element={<Referee />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/crackdown" element={<Story />} />

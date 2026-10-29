@@ -104,6 +104,16 @@ export function refereesPath(lg: League, season?: string): string {
 export function weeklyPath(week?: string): string {
   return week ? `/weekly/${week}` : "/weekly";
 }
+/** A game's page. Unlike the boards it always carries its season: a game is one
+    fixed event, not a view of "now", so there is no evergreen form to drop to. */
+export function gamePath(lg: League, season: string, id: string): string {
+  return `/game/${lg}/${season}/${id}`;
+}
+/** A league's game list. Like `boardPath`, the caller passes the season through
+    `datedPart` first: the current season is the season-less URL. */
+export function gamesPath(lg: League, season?: string): string {
+  return `/games/${lg}${seg(season)}`;
+}
 
 /* ------------------------------------------------------- league from the URL */
 
@@ -118,6 +128,8 @@ const LEAGUE_ROUTES = [
   "calibration",
   "lineups",
   "value",
+  "game",
+  "games",
 ] as const;
 
 const LEAGUE_IN_PATH = new RegExp(
@@ -138,7 +150,9 @@ export function leagueFromPath(pathname: string): League | null {
  * evergreen URL, because seasons are not shared (BBL starts 2023-24) and a
  * kept season would produce a dead URL. On entity routes there is nothing to
  * keep at all — player and lineup ids do not cross leagues — so those land on
- * the new league's leaderboard, the only guaranteed-live destination.
+ * the new league's leaderboard, the only guaranteed-live destination. A game
+ * is the one entity with a list of its own, so game pages land on the new
+ * league's game list.
  *
  * Returns null on routes with no league in the URL (`/`, `/methodology`,
  * `/compare`, `/data`, `/crackdown`, `/feedback`): there is nowhere to
@@ -171,6 +185,7 @@ export function leagueSwitchTarget(pathname: string, lg: League): string | null 
       : boardPath(lg, DEFAULT_BOARD_LENS);
   }
   if (head === "player") return boardPath(lg, DEFAULT_BOARD_LENS);
+  if (head === "game" || head === "games") return gamesPath(lg);
   return null;
 }
 

@@ -702,3 +702,80 @@ export interface ProfilesFile {
   test: { pairs: number; medianRank: number; medianField: number; top5: number; top10pct: number };
   rows: [League, string, string, string, string, 0 | 1, number[], number[]][];
 }
+
+/** One game in a season's index (games-{LG}-{season}.json). Home first in
+    every pair. */
+export interface GameIndexRow {
+  id: string;
+  /** ISO date. Null for the GBL, whose dates are interpolated, not published. */
+  d: string | null;
+  /** Monday-keyed week: which gameweek-{LG}-{week}.json holds this game's detail. */
+  wk: string;
+  /** Team ids and the labels the play-by-play used that game. */
+  h: string;
+  a: string;
+  hl: string;
+  al: string;
+  /** Final score. */
+  s: [number, number];
+  /** Points the game's shots and free throws were worth. */
+  x: [number, number];
+  /** Home side's win share, whole percent. Null when `meta.winShare` is false. */
+  w: number | null;
+}
+
+/** games-{LG}-{season}.json: every published game of one league-season. */
+export interface GameIndex {
+  meta: {
+    league: League;
+    season: string;
+    /** False when the win share failed calibration and is withheld (`w` null). */
+    winShare: boolean;
+    /** Pooled expected calibration error of the win share. */
+    ece: number;
+    /** Games left out because their events did not rebuild the official final. */
+    excluded: number;
+    games: number;
+  };
+  games: GameIndexRow[];
+}
+
+/** One game's detail inside a week chunk. Shots and free throws are columns:
+    entry i of each array is one event, and `p` indexes into the game's `p`
+    list, whose side (0 home, 1 away) is the event's side. */
+export interface GameDetail {
+  /** Players: [id, name, side, FGA, FG points, expected FG points, FTA, FTM]. */
+  p: [string, string, 0 | 1, number, number, number, number, number][];
+  s: {
+    p: number[];
+    /** Period: 1-4, then 5+ for overtimes. */
+    q: number[];
+    /** Seconds left in the period. */
+    c: number[];
+    /** Centimetres from the hoop (x across, y out from the baseline); null when unlocated. */
+    x: (number | null)[];
+    y: (number | null)[];
+    /** One "1"/"0" per shot: made or missed. */
+    m: string;
+    /** One "2"/"3" per shot: its value. */
+    v: string;
+    /** xFG, in thousandths. */
+    e: number[];
+  };
+  f: {
+    p: number[];
+    q: number[];
+    c: number[];
+    /** One "1"/"0" per free throw: made or missed. */
+    m: string;
+    /** The shooter's shrunk season FT%, in thousandths. */
+    e: number[];
+  };
+  /** Officials: [id, name]. */
+  r: [string, string][];
+}
+
+/** gameweek-{LG}-{week}.json: the week's games, keyed by game id. */
+export interface GameWeek {
+  games: Record<string, GameDetail>;
+}

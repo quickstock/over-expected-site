@@ -10,6 +10,8 @@ import {
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type {
+  GameIndex,
+  GameWeek,
   HeadshotMap,
   ProfilesFile,
   WeeklyIndex,
@@ -430,6 +432,34 @@ export function useHeadshots(league: League | null): HeadshotState {
   const r = useLayerFile<HeadshotMap>(
     league ? `headshots-${league}.json` : null,
   );
+  if (r.status === "ready") return { status: "ready", data: r.data! };
+  return { status: r.status };
+}
+
+export type GameIndexState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; data: GameIndex };
+
+/** One league-season's game index (games-{LG}-{season}.json): every published
+    game with its teams, final score, expected score and win share. */
+export function useGameIndex(league: League, season: string): GameIndexState {
+  const r = useLayerFile<GameIndex>(`games-${league}-${season}.json`);
+  if (r.status === "ready") return { status: "ready", data: r.data! };
+  return { status: r.status };
+}
+
+export type GameWeekState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; data: GameWeek };
+
+/** One Monday-keyed week of game detail (gameweek-{LG}-{week}.json): shots,
+    free throws, player lines and officials for every game in it. Pass null
+    until the week is known (it comes from the game's index row): nothing is
+    fetched and the state stays "loading". */
+export function useGameWeek(league: League, week: string | null): GameWeekState {
+  const r = useLayerFile<GameWeek>(week ? `gameweek-${league}-${week}.json` : null);
   if (r.status === "ready") return { status: "ready", data: r.data! };
   return { status: r.status };
 }
