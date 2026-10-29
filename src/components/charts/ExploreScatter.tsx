@@ -410,7 +410,9 @@ export async function downloadPng(
   // the hit-testing overlay would paint as a flat box
   clone.querySelector("rect.cursor-crosshair")?.remove();
 
-  const body = getComputedStyle(document.body);
+  // The paper is painted on <html>; <body> is transparent, and a transparent
+  // card renders black-on-black wherever it is posted in dark mode.
+  const paper = getComputedStyle(document.documentElement).backgroundColor;
   const ink = getComputedStyle(document.documentElement).getPropertyValue("--color-ink").trim() || "#111";
   const faint = getComputedStyle(document.documentElement).getPropertyValue("--color-ink-faint").trim() || "#777";
   const top = 64;
@@ -426,7 +428,7 @@ export async function downloadPng(
   const bg = document.createElementNS(ns, "rect");
   bg.setAttribute("width", "100%");
   bg.setAttribute("height", "100%");
-  bg.setAttribute("fill", body.backgroundColor);
+  bg.setAttribute("fill", paper);
   out.appendChild(bg);
   const text = (s: string, x: number, y: number, size: number, weight: number, color: string, anchor = "start") => {
     const t = document.createElementNS(ns, "text");

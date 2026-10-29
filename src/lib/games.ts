@@ -1,5 +1,5 @@
 import type { League } from "../leagues";
-import type { GameDetail } from "../types";
+import type { GameDetail, GameIndexRow } from "../types";
 
 /** Seconds in one period. Regulation is four quarters, 12 minutes in the NBA
     and 10 everywhere else (FIBA leagues and the WNBA); every overtime is 5. */
@@ -59,4 +59,24 @@ export function raceSeries(
     expected.push(expected[expected.length - 1] + e.expected);
   }
   return { t, actual, expected };
+}
+
+/** Season order for a game index: by date, then id. The GBL ships no dates
+    (they are interpolated, not published), so its games fall back to id
+    order, the order its feed numbered them in. */
+export function chronological(a: GameIndexRow, b: GameIndexRow): number {
+  if (a.d && b.d && a.d !== b.d) return a.d < b.d ? -1 : 1;
+  return a.id.localeCompare(b.id, "en", { numeric: true });
+}
+
+/** Each game's place in its season, 1-based, by `chronological`. Stands in for
+    the date where a league publishes none. */
+export function gameNumbers(games: readonly GameIndexRow[]): Map<string, number> {
+  return new Map([...games].sort(chronological).map((g, i) => [g.id, i + 1]));
+}
+
+/** The side that won (0 home, 1 away). A tie, which no league here allows,
+    reads from the home side. */
+export function winnerSide(g: GameIndexRow): 0 | 1 {
+  return g.s[1] > g.s[0] ? 1 : 0;
 }

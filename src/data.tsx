@@ -310,11 +310,18 @@ function useLayerFile<T>(file: string | null): {
   data?: T;
 } {
   const [, bump] = useState(0);
+  // "error" means this hook saw the fetch for this file fail. Inferring it
+  // from a missing promise reported an error on the first render of every new
+  // file name, because the fetch only starts in the effect below.
+  const [failed, setFailed] = useState<string | null>(null);
   useEffect(() => {
     if (!file || layerCache.has(file)) return;
     let alive = true;
+    setFailed(null);
     fetchLayer<T>(file)
-      .catch(() => undefined)
+      .catch(() => {
+        if (alive) setFailed(file);
+      })
       .finally(() => {
         if (alive) bump((n) => n + 1);
       });
@@ -326,8 +333,8 @@ function useLayerFile<T>(file: string | null): {
   if (!file) return { status: "loading" };
   const data = layerCache.get(file) as T | undefined;
   if (data) return { status: "ready", data };
-  if (layerPromises.has(file)) return { status: "loading" };
-  return { status: "error" };
+  if (failed === file) return { status: "error" };
+  return { status: "loading" };
 }
 
 /** The homepage's shot sample for one league-season, fetched once the page

@@ -12,13 +12,16 @@ const R = 1.6;
 
 /** One path of dots, one per shot whose outcome is `which` ("1" made, "0"
     missed) in the `made` string. A shot with an unknown location (null in
-    either column) has nowhere to draw and is skipped. */
+    either column) has nowhere to draw and is skipped. `r` is the dot radius
+    in viewBox units: the default suits a season's thousands of shots, a
+    single game's hundred wants larger dots. */
 export function dotsPath(
   xs: readonly (number | null)[],
   ys: readonly (number | null)[],
   made: string,
   which: "0" | "1",
   court: keyof typeof UNITS_PER_CM,
+  r: number = R,
 ): string {
   const u = UNITS_PER_CM[court];
   let d = "";
@@ -26,9 +29,9 @@ export function dotsPath(
     const sx = xs[i];
     const sy = ys[i];
     if (made[i] !== which || sx == null || sy == null) continue;
-    const x = HOOP_X + sx * u - R;
+    const x = HOOP_X + sx * u - r;
     const y = HOOP_Y + sy * u;
-    d += `M${x.toFixed(1)} ${y.toFixed(1)}a${R} ${R} 0 1 0 ${2 * R} 0a${R} ${R} 0 1 0 ${-2 * R} 0`;
+    d += `M${x.toFixed(1)} ${y.toFixed(1)}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
   }
   return d;
 }
