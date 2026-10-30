@@ -138,6 +138,7 @@ step "NBA export"              $PY export_site_data.py
 step "NBA EXPORT GATE"         $PY scripts/validate_export.py
 step "NBA weekly post"         $PY export_weekly.py
 step "NBA shot sample"         $PY export_shots.py
+step "NBA game pages"          $PY export_games.py
 
 # ---------------------------------------------------------------- NBA layers
 # Rotations are optional (build_stints falls back to the pbp sub timeline)
@@ -169,6 +170,7 @@ step "Euro VALIDATION GATE"    $PY validate.py
 step "Euro export"             $PY export_site_data.py
 step "Euro weekly post"        $PY export_weekly.py
 step "Euro shot sample"        $PY export_shots.py
+step "Euro game pages"         $PY export_games.py
 pull "Euro headshots"          $PY pull_headshots.py
 
 # ---------------------------------------------------------------- site

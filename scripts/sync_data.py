@@ -165,6 +165,12 @@ LAYER_SOURCES = [
     ("shots-*-*.json", _NBA_PUBLIC, "shots-chunks-none-*.json"),
     ("shots-*-*.json", OE / "NBA_OE" / "site" / "public-archive", "shots-chunks-none-*.json"),
     ("shots-*-*.json", _EURO, "shots-chunks-none-*.json"),
+    # game pages: a per-league-season index (games-*) and the week chunks it
+    # points at (gameweek-*), from export_games.py in each pipeline. Distinct
+    # prefixes, so neither glob sweeps up the other.
+    ("games-*-*.json", _NBA_PUBLIC, "gameweek-*-*.json"),
+    ("games-*-*.json", OE / "NBA_OE" / "site" / "public-archive", "gameweek-*-*.json"),
+    ("games-*-*.json", _EURO, "gameweek-*-*.json"),
     # calibration is exported straight into site/public by the calibration
     # project, so it needs no copy step; listed here for the record only.
 ]

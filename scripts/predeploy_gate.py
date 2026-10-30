@@ -670,6 +670,58 @@ def check_shot_samples():
             ok(f"{code}: {len(seasons)} seasons sampled")
 
 
+def check_game_pages():
+    """17. Every season a league lists, archive included, has its games
+    index, every index row's week names a chunk that holds that game, and the
+    two pipelines' copies of games.py are identical. A game page opens its
+    index first and its week chunk second; a missing season or a row pointing
+    at a chunk without it is a page that loads, then finds nothing, with every
+    URL still returning 200. games.py holds the expected-score, win-share and
+    calibration code both export_games.py scripts import, and a copy that
+    drifted would put the NBA's win shares and the other leagues' on
+    different definitions."""
+    print("17. game pages")
+    a, b = NBA_OE / "games.py", OE / "Euro_OE" / "games.py"
+    if a.read_bytes() == b.read_bytes():
+        ok("NBA_OE/games.py and Euro_OE/games.py are identical")
+    else:
+        fail("NBA_OE/games.py and Euro_OE/games.py differ")
+    chunks: dict = {}
+
+    def chunk_ids(code, wk):
+        key = (code, wk)
+        if key not in chunks:
+            path = PUBLIC / f"gameweek-{code}-{wk}.json"
+            chunks[key] = set(json.loads(path.read_text())["games"]) if path.exists() else None
+        return chunks[key]
+
+    for core in sorted(PUBLIC.glob("data-*.json")):
+        if core.stem.endswith("-archive"):
+            continue
+        code = core.stem[len("data-"):]
+        meta = json.loads(core.read_text())["meta"]
+        seasons = meta["seasons"] + (meta.get("archive") or {}).get("seasons", [])
+        missing = [s for s in seasons if not (PUBLIC / f"games-{code}-{s}.json").exists()]
+        if missing:
+            fail(f"{code}: no games index for {missing}")
+            continue
+        n_games, no_chunk, no_game = 0, set(), []
+        for s in seasons:
+            for row in json.loads((PUBLIC / f"games-{code}-{s}.json").read_text())["games"]:
+                n_games += 1
+                ids = chunk_ids(code, row["wk"])
+                if ids is None:
+                    no_chunk.add(row["wk"])
+                elif row["id"] not in ids:
+                    no_game.append(f"{s} {row['id']}")
+        if no_chunk:
+            fail(f"{code}: {len(no_chunk)} week chunk(s) missing, e.g. {sorted(no_chunk)[:3]}")
+        if no_game:
+            fail(f"{code}: {len(no_game)} indexed game(s) absent from their chunk, e.g. {no_game[:3]}")
+        if not (no_chunk or no_game):
+            ok(f"{code}: {len(seasons)} seasons, {n_games} games, every one in its week chunk")
+
+
 def check_og_envelope():
     print("6. OG-card envelope")
     dist_og = SITE / "dist" / "og"
@@ -702,6 +754,7 @@ def main():
     check_og_envelope()
     check_archive_index()
     check_shot_samples()
+    check_game_pages()
 
     print()
     if failures:
