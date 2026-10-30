@@ -66,10 +66,11 @@ export interface ZoneAgg {
 /**
  * Per game, in schedule order:
  * [actual drawn FTA, expected FTA, possessions, actual FG points,
- *  expected FG points]. The last two power the shot-value / shot-making
- * gap and form charts; absent in exports made before the suite existed.
+ *  expected FG points, game id]. The FG points power the shot-value /
+ * shot-making gap and form charts; absent in exports made before the suite
+ * existed. The id links the line to its game page.
  */
-export type GameLine = [number, number, number, number?, number?];
+export type GameLine = [number, number, number, number?, number?, string?];
 
 /**
  * Shooting fouls itemized. FT counts by trip type; the identity
@@ -664,6 +665,9 @@ export interface WeeklyRow {
   xpts: number;
   /** pts - xpts: field-goal points over expected. */
   oe: number;
+  /** The game's id and season: with the league, the key of its game page. */
+  gid?: string;
+  season?: string;
 }
 
 /** A week's lists for one league: top 3 each way and games played. */
@@ -735,6 +739,8 @@ export interface GameIndex {
     ece: number;
     /** Games left out because their events did not rebuild the official final. */
     excluded: number;
+    /** Games never played (awarded forfeits), skipped and not counted as excluded. */
+    forfeits: number;
     games: number;
   };
   games: GameIndexRow[];
