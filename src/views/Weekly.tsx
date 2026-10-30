@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useAllData, useWeeklyIndex, useWeeklyWeek } from "../data";
 import { ACTIVE_LEAGUES } from "../leagues";
 import { LEAGUE_LABEL, type League, type WeeklyRow } from "../types";
-import { weeklyPath } from "../routes";
+import { gamePath, weeklyPath } from "../routes";
 import { divergingText } from "../lib/color";
 import { firstLast, signed } from "../lib/format";
 import { useTitle } from "../lib/useTitle";
@@ -38,6 +38,20 @@ function PlayerName({ lg, r, sentence = false }: { lg: League; r: WeeklyRow; sen
   );
 }
 
+/** "MEM vs UTA · Wed, Oct 21", linked to the game's page when the row names
+    one. The link is the matchup and date, so it never nests the player's. */
+function GameLink({ lg, r, children }: { lg: League; r: WeeklyRow; children: React.ReactNode }) {
+  if (!r.gid || !r.season) return <>{children}</>;
+  return (
+    <Link
+      to={gamePath(lg, r.season, r.gid)}
+      className="underline decoration-line underline-offset-2 hover:decoration-ink"
+    >
+      {children}
+    </Link>
+  );
+}
+
 function Headline({ label, r }: { label: string; r: WeeklyRow & { lg: League } }) {
   return (
     <div className="rounded border border-line-soft px-5 py-5">
@@ -55,7 +69,10 @@ function Headline({ label, r }: { label: string; r: WeeklyRow & { lg: League } }
         <PlayerName lg={r.lg} r={r} sentence />
       </p>
       <p className="mt-1 text-sm text-ink-soft">
-        {matchup(r)} · {gameDate(r.date)} · {LEAGUE_LABEL[r.lg]}
+        <GameLink lg={r.lg} r={r}>
+          {matchup(r)} · {gameDate(r.date)}
+        </GameLink>{" "}
+        · {LEAGUE_LABEL[r.lg]}
       </p>
       <p className="mt-3 text-sm text-ink-soft">
         <span className="font-mono tnum text-ink">
@@ -82,7 +99,9 @@ function GameTable({ lg, caption, rows }: { lg: League; caption: string; rows: W
                 <PlayerName lg={lg} r={r} />
               </span>
               <span className="block text-xs text-ink-faint">
-                {matchup(r)} · {gameDate(r.date)}
+                <GameLink lg={lg} r={r}>
+                  {matchup(r)} · {gameDate(r.date)}
+                </GameLink>
               </span>
             </td>
             <td className="py-2 pr-3 text-right font-mono text-xs tnum text-ink-soft">
@@ -135,7 +154,13 @@ export default function Weekly() {
   useTitle(entry ? `Shooting, week of ${weekRange(entry.week)}` : "This week in shooting");
 
   if (index.status !== "ready") {
-    return <div className="mx-auto max-w-3xl px-5 py-16 text-sm text-ink-faint">Loading…</div>;
+    // Taller than a screen, like Game's skeleton: a short placeholder would
+    // leave the footer in view, and it would drop out of view when the post lands.
+    return (
+      <div className="mx-auto min-h-[150vh] max-w-3xl px-5 py-16 text-sm text-ink-faint">
+        Loading…
+      </div>
+    );
   }
   if (!entry) {
     return (

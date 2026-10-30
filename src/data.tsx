@@ -90,7 +90,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (saved && ACTIVE_LEAGUES.includes(saved)) setRemembered(saved);
   }, []);
 
-  const league = leagueFromPath(pathname) ?? remembered;
+  const pathLeague = leagueFromPath(pathname);
+  const league = pathLeague ?? remembered;
+
+  // Remember the league the reader was last viewing, not only the one they
+  // picked: /referee/:id carries no league in its URL, so it reads `remembered`,
+  // and a reader who followed a link from a European game or /referees/EL has
+  // never touched the picker. Keyed on the path's league alone, so the picker's
+  // own write (which navigates) lands on the same value and nothing re-fires.
+  // After the mount effect above, so the URL beats a stale stored value.
+  useEffect(() => {
+    if (!pathLeague) return;
+    localStorage.setItem(LS_KEY, pathLeague);
+    setRemembered(pathLeague);
+  }, [pathLeague]);
 
   // Picking a league navigates. It still records the choice, because the
   // league-less routes have nowhere to navigate to and read `remembered`.

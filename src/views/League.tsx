@@ -8,12 +8,13 @@
  * leagues that ship it.
  */
 import { useMemo, useState } from "react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { inArchive, seasonOptions, useArchive, useData, useDefense, useLeague } from "../data";
 import { ACTIVE_LEAGUES, LEAGUE_LABEL, leagueDef, type League } from "../leagues";
 import {
   DEFAULT_LEAGUE_LENS,
   datedPart,
+  gamesPath,
   leagueLensKey,
   leagueLensSlug,
   leaguePath,
@@ -569,6 +570,14 @@ export default function League() {
         Is it the player, or the situation around him? The team layer under
         every number on the site: what each team creates, converts, draws, and
         concedes, scored against the season's league expectation.
+      </p>
+      <p className="mt-3 text-sm">
+        <Link
+          to={gamesPath(league, datedPart(season, currentSeason))}
+          className="underline underline-offset-2 hover:text-ink"
+        >
+          Every game, by the shots
+        </Link>
       </p>
 
       <SegmentedControl

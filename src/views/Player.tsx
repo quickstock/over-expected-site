@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useArchive, useLeagueData, usePlayerChunk, useRapm } from "../data";
 import ArchiveWait from "../components/ArchiveWait";
 import { ACTIVE_LEAGUES, LEAGUE_LABEL, ftNoun, leagueDef, type League } from "../leagues";
@@ -10,7 +10,7 @@ import type {
   SeasonDetail,
   ShotValueRow,
 } from "../types";
-import { DEFAULT_BOARD_LENS, boardPath, datedPart } from "../routes";
+import { DEFAULT_BOARD_LENS, boardPath, datedPart, gamePath } from "../routes";
 import { useTitle } from "../lib/useTitle";
 import { divergingText } from "../lib/color";
 import { int, ordinal, signed } from "../lib/format";
@@ -302,6 +302,7 @@ export default function Player() {
   const data = useLeagueData(league);
   const def = leagueDef(league);
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const [formWindow, setFormWindow] = useState("10");
   const [courtMode, setCourtMode] = useState("attempts");
   const hasDefense = !!def.layers?.lineups;
@@ -380,6 +381,15 @@ export default function Player() {
   const detail =
     chunk.status === "ready" && row ? chunk.chunk[String(row.id)] : undefined;
   const fouls = detail?.fouls;
+
+  // The form strips open a game from the season's own game list. The lens
+  // series above rebuild each line without its id, so the id is read from the
+  // original lines by index (same order).
+  const hasGameIds = !!detail?.games.some((g) => g[5]);
+  const openGame = (i: number) => {
+    const gid = detail?.games[i]?.[5];
+    if (season && gid) navigate(gamePath(league, season, gid));
+  };
 
   // Shot-value lens data: this player's row and the season's qualified pool.
   const svPool = (season && data?.shotValue?.[season]) || [];
@@ -646,6 +656,7 @@ export default function Player() {
             <p className="mt-1.5 text-sm text-ink-soft">
               Trailing {formWindow}-game FTAOE per 100 possessions: the
               leaderboard's unit, watched move through the season.
+              {hasGameIds && " Select a bar to open the last game in its window."}
             </p>
           </div>
           <SegmentedControl
@@ -660,6 +671,7 @@ export default function Player() {
             games={detail.games}
             window={Number(formWindow)}
             className="mt-6"
+            onGameClick={hasGameIds ? openGame : undefined}
           />
         ) : chunk.status === "error" ? null : (
           <div className="mt-6 h-[200px] animate-pulse rounded bg-wash" aria-busy="true" />
@@ -811,6 +823,7 @@ export default function Player() {
                     Trailing {formWindow}-game{" "}
                     {lens === "value" ? "points" : "FG points"} over expected per
                     100 possessions, through the season.
+                    {hasGameIds && " Select a bar to open the last game in its window."}
                   </p>
                 </div>
                 <SegmentedControl
@@ -821,7 +834,12 @@ export default function Player() {
                 />
               </div>
               {detail ? (
-                <FormStrip games={lensGames} window={Number(formWindow)} className="mt-6" />
+                <FormStrip
+                  games={lensGames}
+                  window={Number(formWindow)}
+                  className="mt-6"
+                  onGameClick={hasGameIds ? openGame : undefined}
+                />
               ) : chunk.status === "error" ? null : (
                 <div className="mt-6 h-[200px] animate-pulse rounded bg-wash" aria-busy="true" />
               )}

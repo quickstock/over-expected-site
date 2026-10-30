@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { GameLine } from "../../types";
 import { rollingRate } from "../../lib/series";
 import { divergingColor, divergingText } from "../../lib/color";
@@ -13,6 +13,11 @@ interface Props {
   window: number;
   height?: number;
   className?: string;
+  /** Makes every point open its game. Gets the 0-based index, in `games`, of
+      the last game in the point's window. Each point becomes one keyboard stop
+      (arrow keys move between points, Enter opens), so the strip is a single
+      tab stop rather than eighty. */
+  onGameClick?: (index: number) => void;
 }
 
 /**
@@ -25,9 +30,13 @@ export default function FormStrip({
   window: win,
   height = 200,
   className = "",
+  onGameClick,
 }: Props) {
   const [wrapRef, width] = useMeasure<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
+  // The one point that is a tab stop (roving tabindex), by window-end game.
+  const [stop, setStop] = useState<number | null>(null);
+  const hitRefs = useRef(new Map<number, SVGRectElement>());
   const revealed = useRevealed(wrapRef);
 
   const points = useMemo(() => rollingRate(games, win), [games, win]);
@@ -57,14 +66,25 @@ export default function FormStrip({
 
   const callouts = [peak, ...(trough.g !== peak.g ? [trough] : [])];
 
+  // A window size change can drop the remembered stop; fall back to the latest.
+  const tabStop = points.some((p) => p.g === stop) ? stop : points[points.length - 1].g;
+  const hitW = Math.max(4, n > 1 ? innerW / (n - 1) : innerW);
+  const moveTo = (p: (typeof points)[number] | undefined) => {
+    if (!p) return;
+    setStop(p.g);
+    hitRefs.current.get(p.g)?.focus();
+  };
+
   return (
     <div ref={wrapRef} className={`relative ${className}`}>
       {width > 0 && (
         <svg
           width={width}
           height={height}
-          role="img"
-          aria-label={`Trailing ${win}-game FTAOE per 100 possessions across the season. Peak ${signed(peak.per100, 1)}, low ${signed(trough.per100, 1)}.`}
+          // role="img" makes its children presentational, which would hide the
+          // game links from assistive tech; a labelled group keeps them.
+          role={onGameClick ? "group" : "img"}
+          aria-label={`Trailing ${win}-game FTAOE per 100 possessions across the season. Peak ${signed(peak.per100, 1)}, low ${signed(trough.per100, 1)}.${onGameClick ? " Each point opens the last game in its window." : ""}`}
         >
           {/* zero = expected */}
           <line
@@ -151,6 +171,56 @@ export default function FormStrip({
               </text>
             );
           })}
+
+          {/* one transparent column per point, over the whole plot height */}
+          {onGameClick && (
+            <g>
+              {points.map((p, i) => (
+                <rect
+                  key={`hit-${p.g}`}
+                  ref={(el) => {
+                    if (el) hitRefs.current.set(p.g, el);
+                    else hitRefs.current.delete(p.g);
+                  }}
+                  x={x(p.g) - hitW / 2}
+                  y={pad.top}
+                  width={hitW}
+                  height={innerH}
+                  fill="transparent"
+                  role="link"
+                  tabIndex={p.g === tabStop ? 0 : -1}
+                  aria-label={`Game ${p.g}, ${signed(p.per100, 1)} per 100 over the last ${win} games. Open the game page.`}
+                  className="cursor-pointer focus-visible:outline-2 focus-visible:outline-ink"
+                  onPointerEnter={() => setHover(p.g)}
+                  onPointerLeave={() => setHover(null)}
+                  onFocus={() => {
+                    setStop(p.g);
+                    setHover(p.g);
+                  }}
+                  onBlur={() => setHover(null)}
+                  onClick={() => onGameClick(p.g - 1)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onGameClick(p.g - 1);
+                    } else if (e.key === "ArrowRight") {
+                      e.preventDefault();
+                      moveTo(points[i + 1]);
+                    } else if (e.key === "ArrowLeft") {
+                      e.preventDefault();
+                      moveTo(points[i - 1]);
+                    } else if (e.key === "Home") {
+                      e.preventDefault();
+                      moveTo(points[0]);
+                    } else if (e.key === "End") {
+                      e.preventDefault();
+                      moveTo(points[points.length - 1]);
+                    }
+                  }}
+                />
+              ))}
+            </g>
+          )}
         </svg>
       )}
 

@@ -42,8 +42,9 @@ function NotFound({ league, season, id, hub }: { league: League; season: string;
     <div className="mx-auto min-h-screen max-w-xl px-5 py-28 text-center sm:px-8">
       <p className="font-display text-2xl font-semibold text-ink">Game not found.</p>
       <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-        There is no {LEAGUE_LABEL[league]} game {id} in {season || "that season"} on this site.
-        Games whose events do not rebuild the official final score are left out.
+        This site has no {LEAGUE_LABEL[league]} game {id} in {season || "that season"}.
+        Either the id is not a game we know, or the game is one of the few left
+        out because its play-by-play does not add up to the official final score.
       </p>
       <Link
         to={hub}
