@@ -153,6 +153,13 @@ export default function Weekly() {
   const detail = useWeeklyWeek(entry?.week ?? null);
   useTitle(entry ? `Shooting, week of ${weekRange(entry.week)}` : "This week in shooting");
 
+  if (index.status === "error") {
+    return (
+      <div className="mx-auto max-w-3xl px-5 py-16 text-sm text-ink-soft">
+        This week's post couldn't load. Try again.
+      </div>
+    );
+  }
   if (index.status !== "ready") {
     // Taller than a screen, like Game's skeleton: a short placeholder would
     // leave the footer in view, and it would drop out of view when the post lands.
@@ -164,7 +171,7 @@ export default function Weekly() {
   }
   if (!entry) {
     return (
-      <div className="mx-auto max-w-3xl px-5 py-16">
+      <div className="mx-auto min-h-screen max-w-3xl px-5 py-16">
         <p className="text-ink-soft">No post for that week.</p>
         <Link to={weeklyPath()} className="mt-4 inline-block underline underline-offset-2">
           The latest week

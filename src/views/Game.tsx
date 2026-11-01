@@ -127,7 +127,8 @@ export default function Game() {
 
   const [hl, al] = [row.hl, row.al];
   const win = row.s[0] === row.s[1] ? null : winnerSide(row);
-  const better = row.x[0] === row.x[1] ? null : row.x[0] > row.x[1] ? 0 : 1;
+  // Within 0.05 the two sides' shots count as worth the same, as in verdict().
+  const better = Math.abs(row.x[0] - row.x[1]) < 0.05 ? null : row.x[0] > row.x[1] ? 0 : 1;
   const share = index.status === "ready" && index.data.meta.winShare && row.w !== null ? [row.w, 100 - row.w] : null;
   const over = [row.s[0] - row.x[0], row.s[1] - row.x[1]];
   const when = row.d ? longDate(row.d) : `Game ${numbers?.get(row.id)}`;

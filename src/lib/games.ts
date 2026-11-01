@@ -22,20 +22,22 @@ export function elapsed(lg: League, period: number, secLeft: number): number {
     its value, a made free throw at 1) and `expected` what the same attempts
     were worth (xFG x value per shot, the shooter's FT% per free throw). Starts
     at 0-0 at t = 0. Events share a second often; a shot sorts before the free
-    throws it drew. */
+    throws it drew. A clock outside its period (the feeds carry -1, -60 or more
+    than a period's length in a few games) is clamped into it. */
 export function raceSeries(
   lg: League,
   d: GameDetail,
 ): { t: number[]; actual: number[]; expected: number[] } {
   const events: { t: number; actual: number; expected: number }[] = [];
   const sideSign = (playerIdx: number) => (d.p[playerIdx][2] === 0 ? 1 : -1);
+  const at = (q: number, c: number) => elapsed(lg, q, Math.min(Math.max(c, 0), periodSeconds(lg, q)));
 
   const { s, f } = d;
   for (let i = 0; i < s.m.length; i++) {
     const sign = sideSign(s.p[i]);
     const value = Number(s.v[i]);
     events.push({
-      t: elapsed(lg, s.q[i], s.c[i]),
+      t: at(s.q[i], s.c[i]),
       actual: s.m[i] === "1" ? sign * value : 0,
       expected: (sign * s.e[i] * value) / 1000,
     });
@@ -43,7 +45,7 @@ export function raceSeries(
   for (let i = 0; i < f.m.length; i++) {
     const sign = sideSign(f.p[i]);
     events.push({
-      t: elapsed(lg, f.q[i], f.c[i]),
+      t: at(f.q[i], f.c[i]),
       actual: f.m[i] === "1" ? sign : 0,
       expected: (sign * f.e[i]) / 1000,
     });
