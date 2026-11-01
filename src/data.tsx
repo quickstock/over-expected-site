@@ -462,9 +462,10 @@ export type GameIndexState =
   | { status: "ready"; data: GameIndex };
 
 /** One league-season's game index (games-{LG}-{season}.json): every published
-    game with its teams, final score, expected score and win share. */
-export function useGameIndex(league: League, season: string): GameIndexState {
-  const r = useLayerFile<GameIndex>(`games-${league}-${season}.json`);
+    game with its teams, final score, expected score and win share. Pass null
+    to hold the fetch: nothing loads and the state stays "loading". */
+export function useGameIndex(league: League, season: string | null): GameIndexState {
+  const r = useLayerFile<GameIndex>(season ? `games-${league}-${season}.json` : null);
   if (r.status === "ready") return { status: "ready", data: r.data! };
   return { status: r.status };
 }

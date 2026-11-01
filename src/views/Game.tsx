@@ -12,6 +12,7 @@ import ScoreRace, { RACE_HEIGHT } from "../components/game/ScoreRace";
 import ShotMap, { sideShots } from "../components/game/ShotMap";
 import PlayerLines from "../components/game/PlayerLines";
 import { downloadPng } from "../components/charts/ExploreScatter";
+import { GAME_METHOD_ID } from "../components/GameMethod";
 
 /** Home | label | away: the scoreboard and every row under it share it, so
     each figure sits under its team. */
@@ -286,7 +287,7 @@ export default function Game() {
       <p className="mt-12 border-t border-line pt-6 text-xs leading-relaxed text-ink-faint">
         What the shots were worth prices every shot by how often shots like it score and
         every free throw at the shooter's season rate, then adds them up for each side.{" "}
-        <Link to="/methodology" className="underline underline-offset-2 hover:text-ink">
+        <Link to={`/methodology#${GAME_METHOD_ID}`} className="underline underline-offset-2 hover:text-ink">
           How shots are priced
         </Link>
         .

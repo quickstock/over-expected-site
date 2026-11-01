@@ -12,6 +12,7 @@ import { useTitle } from "../lib/useTitle";
 import SegmentedControl from "../components/SegmentedControl";
 import ShowAllButton from "../components/ShowAllButton";
 import SortHeader, { cycleSort } from "../components/SortHeader";
+import { GAME_METHOD_ID } from "../components/GameMethod";
 
 type SortKey = "date" | "margin" | "share";
 
@@ -249,10 +250,18 @@ export default function Games() {
             <>
               {" "}
               {ready.meta.excluded} {ready.meta.excluded === 1 ? "game is" : "games are"} left out
-              because their events do not rebuild the official final score.
+              because {ready.meta.excluded === 1 ? "its events do" : "their events do"} not rebuild
+              the official final score.
+            </>
+          )}
+          {ready && ready.meta.forfeits > 0 && (
+            <>
+              {" "}
+              {ready.meta.forfeits} {ready.meta.forfeits === 1 ? "forfeit was" : "forfeits were"} never
+              played and {ready.meta.forfeits === 1 ? "is" : "are"} not listed.
             </>
           )}{" "}
-          <Link to="/methodology" className="underline underline-offset-2 transition-colors duration-150 hover:text-ink">
+          <Link to={`/methodology#${GAME_METHOD_ID}`} className="underline underline-offset-2 transition-colors duration-150 hover:text-ink">
             How shots are priced
           </Link>
           .

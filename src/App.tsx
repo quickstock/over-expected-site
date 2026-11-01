@@ -73,11 +73,17 @@ function DropStaticBlock() {
   return null;
 }
 
+/** A new route starts at the top, unless its URL names a section
+    (/methodology#games): then it starts there. The app mounts only once the
+    league's data is in, so the section is already in the DOM when this runs,
+    on a cold load and on an in-app link alike. */
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    const target = hash ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+    if (target) target.scrollIntoView();
+    else window.scrollTo(0, 0);
+  }, [pathname, hash]);
   return null;
 }
 

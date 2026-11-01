@@ -1035,7 +1035,11 @@ shell({
       "<p><strong>What this does not measure:</strong> with shot location taken " +
         "out it still cannot separate contact-seeking skill from the kind of shot " +
         "within a zone or from officiating, and it is not evidence of bias in any " +
-        "direction.</p>",
+        "direction.</p>",      "<h2>Game pages</h2>\n<p>Every game's page shows its final score and what " +
+        "each side's shots were worth: field goals priced by how often shots like " +
+        "them go in, free throws at the shooter's season rate. The gap between the " +
+        "two is not a luck number, because misses bring putbacks and a team that " +
+        "falls behind takes more shots and draws more free throws.</p>",
     ],
   }),
   ld: [
@@ -2829,6 +2833,292 @@ for (const [i, e] of weeklyIndex.entries()) {
   });
 }
 
+// ---- game pages. A hub per league-season, every season the reader can pick
+// (archive included), and a shell per game for the season before each league's
+// default season and every season after it. The boards' provisional() rule does
+// NOT apply to either: a finished game's numbers do not move as the season's
+// sample grows, so the in-progress season's games are indexable from day one.
+// Older games get no shell and fall through to the noindex SPA fallback; their
+// hub still links every one of them, because those pages render client-side.
+//
+// The static blocks state facts only: the final, what each side's shots were
+// worth, and who won. The gap between the two is NOT a luck measure (the actual
+// margin moves 0.44 points per point of expected margin in the NBA; see
+// src/components/GameMethod.tsx), so no copy here says deserved, lucky, robbed
+// or should have. Mirrors lib/games.ts for the season order and the winner.
+const gameUrls = [];
+let hubShells = 0;
+let gameShells = 0;
+const winnerSide = (g) => (g.s[1] > g.s[0] ? 1 : 0);
+const chronological = (a, b) => {
+  if (a.d && b.d && a.d !== b.d) return a.d < b.d ? -1 : 1;
+  return a.id.localeCompare(b.id, "en", { numeric: true });
+};
+const utcDate = (d, opts) =>
+  new Date(`${d}T00:00:00Z`).toLocaleDateString("en-US", { ...opts, timeZone: "UTC" });
+const longDay = (d) => utcDate(d, { month: "long", day: "numeric", year: "numeric" });
+const shortDay = (d) => utcDate(d, { month: "short", day: "numeric", year: "numeric" });
+// The hub's own date column (lib/weekly.ts gameDate).
+const hubDay = (d) => utcDate(d, { weekday: "short", month: "short", day: "numeric" });
+// Kept to two sentences: it repeats on every game and hub page, and on a
+// templated page the shared text is what makes bodies look alike.
+const GAMES_METHOD =
+  `<p>Field goals are priced by how often shots like them go in, free throws at ` +
+  `the shooter's season rate. The gap between the score and the shots' worth is ` +
+  `not a luck number: misses bring putbacks, and a team that falls behind takes ` +
+  `more shots and draws more free throws. ` +
+  `<a href="/methodology#games">How it is measured</a>.</p>`;
+
+/** Home, then each [name, path] in order. The game routes cannot use the
+    path-derived breadcrumbs(): /game/NBA is not a page, and the trail a reader
+    follows is league, its games, the season, the game. */
+function crumbList(items) {
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: `${BASE}/` },
+      ...items.map(([name, path], i) => ({
+        "@type": "ListItem", position: i + 2, name, item: `${BASE}${path}`,
+      })),
+    ],
+  };
+}
+
+/** A hub's games table: one linked row per game, up to ~1,230 in an NBA season,
+    which is why it is not built with table(): that helper escapes every cell
+    (no links) and puts an inline style on each numeric one, ~100 KB a season
+    here. The links are how a crawler walks from the hub to each game. */
+function gamesTable({ caption, lg, season, games, number, dated }) {
+  const body = games
+    .map((g) =>
+      `<tr><th scope="row">${esc(g.d ? hubDay(g.d) : `Game ${number.get(g.id)}`)}</th>` +
+      `<td><a href="/game/${lg}/${season}/${g.id}">${esc(`${g.hl} vs ${g.al}`)}</a></td>` +
+      `<td class="tnum">${g.s[0]}-${g.s[1]}</td>` +
+      `<td class="tnum">${g.x[0].toFixed(1)}-${g.x[1].toFixed(1)}</td></tr>`)
+    .join("\n");
+  return (
+    `<table>\n<caption>${esc(caption)}</caption>\n<thead><tr>` +
+    `<th scope="col">${dated ? "Date" : "Game"}</th><th scope="col">Matchup</th>` +
+    `<th scope="col">Final</th><th scope="col">Shots' worth</th></tr></thead>\n` +
+    `<tbody>\n${body}\n</tbody>\n</table>`
+  );
+}
+
+/** Both sides' lines from the game's week chunk, summed over its player rows
+    (p: [id, name, side, fga, fgPts, xFgPts, fta, ftm]) and its free throws
+    (f.e: the shooter's rate, in thousandths). They must rebuild the index's
+    final exactly and its worth to rounding, or the table would contradict the
+    h1 above it; every game in the window does (checked 2026-10-30). */
+function sideLines(lg, season, g, detail) {
+  const t = [0, 1].map(() => ({ fga: 0, fg: 0, xfg: 0, fta: 0, ftm: 0, xft: 0 }));
+  for (const p of detail.p) {
+    const s = t[p[2]];
+    s.fga += p[3]; s.fg += p[4]; s.xfg += p[5]; s.fta += p[6]; s.ftm += p[7];
+  }
+  for (let i = 0; i < detail.f.p.length; i++) t[detail.p[detail.f.p[i]][2]].xft += detail.f.e[i] / 1000;
+  for (const s of [0, 1]) {
+    if (t[s].fg + t[s].ftm !== g.s[s] || Math.abs(t[s].xfg + t[s].xft - g.x[s]) > 0.15) {
+      throw new Error(`${lg} ${season} game ${g.id}: side ${s} lines do not rebuild the index row`);
+    }
+  }
+  return t;
+}
+
+/** "Did the better shots win?", answered with the final, both sides' worth and
+    the winner. Within 0.05 the two sides' shots count as worth the same, as on
+    the game page (Game.tsx verdict). */
+function gameAnswer(g) {
+  const lab = [esc(g.hl), esc(g.al)];
+  const dx = g.x[0] - g.x[1];
+  const better = Math.abs(dx) < 0.05 ? null : dx > 0 ? 0 : 1;
+  const w = winnerSide(g);
+  const result = `${lab[w]} beat ${lab[1 - w]} <strong>${g.s[w]}-${g.s[1 - w]}</strong>`;
+  if (better === null) {
+    return `Neither side had the better shots. ${result}, and the shots on each side ` +
+      `were worth ${g.x[0].toFixed(1)}.`;
+  }
+  const worth = (a) =>
+    `${lab[a]}'s shots were worth <strong>${g.x[a].toFixed(1)}</strong> points to ` +
+    `${lab[1 - a]}'s ${g.x[1 - a].toFixed(1)}`;
+  return better === w ? `Yes. ${result}, and ${worth(w)}.` : `No. ${result}, but ${worth(1 - w)}.`;
+}
+
+for (const lg of LEAGUES) {
+  const d = dataByLeague[lg];
+  const label = LEAGUE_LABEL[lg];
+  const current = d.meta.defaultSeason;
+  // Every season the hub's picker offers: archive first, as seasonOptions() does.
+  const seasons = [...new Set([...(d.meta.archive?.seasons ?? []), ...d.meta.seasons])].sort();
+  const firstShelled = d.meta.seasons[Math.max(0, d.meta.seasons.indexOf(current) - 1)];
+  const hubPath = (season) => `/games/${lg}${season === current ? "" : `/${season}`}`;
+  const indexes = new Map(seasons.map((s) => [s, readJson(`games-${lg}-${s}.json`)]));
+
+  // One card per league, naming no season and no game, so it is right for
+  // every hub and game page under it. Its range is read from the games.
+  const img = `games-${lg}.png`;
+  await renderPng(
+    layerCard({
+      leagues: [lg],
+      kicker: "games",
+      headline: "Every game, by the shots.",
+      scale: {
+        ...symRange([...indexes.values()].flatMap((ix) => ix.games.map((g) => g.x[0] - g.x[1]))),
+        unit: "expected margin, home minus away",
+      },
+    }),
+    join(DIST, "og", img),
+  );
+
+  for (const season of seasons) {
+    const ix = indexes.get(season);
+    const number = new Map([...ix.games].sort(chronological).map((g, i) => [g.id, i + 1]));
+    const dated = ix.games.some((g) => g.d);
+    const canonical = hubPath(season);
+    // A season after the default one is still being played (the boards'
+    // provisional() test), so its hub says "so far" rather than "every".
+    const inProgress = d.meta.seasons.indexOf(season) > d.meta.seasons.indexOf(current);
+    // League, its games, then the season unless the games hub already is it.
+    const leagueCrumbs = [[label, `/league/${lg}/shot-value`], ["Games", hubPath(current)]];
+    const seasonCrumbs = season === current ? leagueCrumbs : [...leagueCrumbs, [season, canonical]];
+
+    // ---- the hub, at its canonical URL and, for the current season, at the
+    // dated twin that points there (kept out of the sitemap, like the boards').
+    const newest = [...ix.games].sort((a, b) => chronological(b, a));
+    const first = newest[newest.length - 1], last = newest[0];
+    const n = ix.games.length;
+    const counts = [
+      ix.meta.excluded
+        ? `${ix.meta.excluded} ${ix.meta.excluded === 1 ? "game is" : "games are"} left out ` +
+          `because ${ix.meta.excluded === 1 ? "its" : "their"} play-by-play does not add up ` +
+          `to the official final score.`
+        : "",
+      ix.meta.forfeits
+        ? `${ix.meta.forfeits} ${ix.meta.forfeits === 1 ? "forfeit was" : "forfeits were"} ` +
+          `never played and ${ix.meta.forfeits === 1 ? "is" : "are"} not listed.`
+        : "",
+    ].filter(Boolean).join(" ");
+    const hub = {
+      title: `${label} games, ${season}`,
+      description: fit([
+        `Every ${label} game of ${season}${inProgress ? " so far" : ""}, ${n.toLocaleString("en-US")} in all: the final score and what each side's shots were worth.`,
+        dated && first?.d && last?.d ? `Played ${longDay(first.d)} to ${longDay(last.d)}.` : "",
+        "Free throws priced at the shooter's season rate.",
+        "Each game opens its shot maps.",
+        "Sortable by date.",
+      ]),
+      image: img,
+      ld: [crumbList(seasonCrumbs)],
+      block: staticBlock({
+        h1: `${label} games, ${season}`,
+        parts: [
+          answer(
+            `What were the ${label} results in ${season}?`,
+            `${n.toLocaleString("en-US")} ${esc(label)} games of ${esc(season)}` +
+              (inProgress ? " so far" : "") +
+              (dated && first?.d && last?.d
+                ? `, played ${esc(longDay(first.d))} to ${esc(longDay(last.d))}`
+                : "") +
+              `, each with its final score and what each side's shots were worth, ` +
+              `home team first.` + (counts ? ` ${esc(counts)}` : "") +
+              (dated ? "" : ` The ${esc(label)} publishes no game dates, so games are ` +
+                `numbered in season order.`),
+          ),
+          GAMES_METHOD,
+          gamesTable({
+            caption: `${label} games, ${season}, newest first: final score and what ` +
+                     `each side's shots were worth, home team first`,
+            lg, season, games: newest, number, dated,
+          }),
+        ],
+      }),
+    };
+    shell({ ...hub, path: canonical, canonical });
+    hubShells++;
+    gameUrls.push(`${BASE}${canonical}`);
+    if (season === current) {
+      shell({ ...hub, path: `/games/${lg}/${season}`, canonical });
+      hubShells++;
+    }
+
+    // ---- one shell per game, for the seasons in the window only.
+    if (season < firstShelled) continue;
+    const byWeek = new Map();
+    for (const g of ix.games) (byWeek.get(g.wk) ?? byWeek.set(g.wk, []).get(g.wk)).push(g);
+    for (const [wk, rows] of byWeek) {
+      const chunk = readJson(`gameweek-${lg}-${wk}.json`).games;
+      for (const g of rows) {
+        if (g.s[0] === g.s[1]) throw new Error(`${lg} ${season} game ${g.id}: a tied final`);
+        const t = sideLines(lg, season, g, chunk[g.id]);
+        const path = `/game/${lg}/${season}/${g.id}`;
+        const lab = [g.hl, g.al];
+        const w = winnerSide(g), l = 1 - w;
+        const dx = g.x[0] - g.x[1];
+        const better = Math.abs(dx) < 0.05 ? null : dx > 0 ? 0 : 1;
+        const when = g.d ? longDay(g.d) : `game ${number.get(g.id)} of ${season}`;
+        const h1 = `${g.hl} ${g.s[0]}-${g.s[1]} ${g.al}, ${when}`;
+        const shortWhen = g.d ? shortDay(g.d) : `game ${number.get(g.id)}, ${season}`;
+        const title = `${g.hl} ${g.s[0]}-${g.s[1]} ${g.al}, ${shortWhen} · ${label}`;
+        shell({
+          title: title.length <= 60 ? title : `${g.hl} ${g.s[0]}-${g.s[1]} ${g.al}, ${shortWhen}`,
+          description: fit([
+            `${lab[w]} beat ${lab[l]} ${g.s[w]}-${g.s[l]} ${g.d ? "on" : "in"} ${when} (${label}).`,
+            `What the shots were worth: ${g.hl} ${g.x[0].toFixed(1)}, ${g.al} ${g.x[1].toFixed(1)}.`,
+            better === null
+              ? "The shots on each side were worth the same."
+              : `${lab[better]}'s shots were worth ${Math.abs(dx).toFixed(1)} more.`,
+            `From the field ${g.hl} scored ${t[0].fg} on shots worth ${t[0].xfg.toFixed(1)}, ${g.al} ${t[1].fg} on ${t[1].xfg.toFixed(1)}.`,
+            `Free throws: ${g.hl} ${t[0].ftm} of ${t[0].fta}, ${g.al} ${t[1].ftm} of ${t[1].fta}.`,
+            "Score race, shot maps and player lines.",
+            "Shot maps and player lines.",
+            "Player lines.",
+          ]),
+          path,
+          image: img,
+          ld: [
+            crumbList([...seasonCrumbs, [`${g.hl} ${g.s[0]}-${g.s[1]} ${g.al}`, path]]),
+            {
+              "@type": "SportsEvent",
+              name: `${g.hl} vs ${g.al}, ${label} ${season}`,
+              ...(g.d ? { startDate: g.d } : {}),
+              sport: "Basketball",
+              homeTeam: { "@type": "SportsTeam", name: g.hl },
+              awayTeam: { "@type": "SportsTeam", name: g.al },
+              url: `${BASE}${path}`,
+            },
+          ],
+          block: staticBlock({
+            h1,
+            parts: [
+              answer("Did the better shots win?", gameAnswer(g)),
+              table({
+                caption: `${h1}: points scored against what the shots were worth, by team`,
+                cols: [{ label: "Team" }, { label: "FGA", numeric: true },
+                       { label: "FG points", numeric: true },
+                       { label: "FG expected", numeric: true },
+                       { label: "FT", numeric: true },
+                       { label: "FT expected", numeric: true },
+                       { label: "Points", numeric: true },
+                       { label: "Shots' worth", numeric: true }],
+                rows: [0, 1].map((s) => [
+                  lab[s], t[s].fga, t[s].fg, t[s].xfg.toFixed(1),
+                  `${t[s].ftm}/${t[s].fta}`, t[s].xft.toFixed(1), g.s[s], g.x[s].toFixed(1)]),
+              }),
+              GAMES_METHOD,
+              `<p><a href="${hubPath(season)}">All ${esc(label)} games, ${esc(season)}</a></p>`,
+            ],
+          }),
+        });
+        gameShells++;
+        gameUrls.push(`${BASE}${path}`);
+      }
+    }
+  }
+}
+console.log(
+  `  games: ${hubShells} hub shells, ${gameShells} game shells, ` +
+    `${gameUrls.length} sitemap urls, ${LEAGUES.length} cards`,
+);
+
 // The canonical URL list. Bare /leaderboard and /league are absent because they
 // are 301s now, and the dated current-season URLs are absent because they
 // canonical to their evergreen twin: a sitemap should list canonicals only.
@@ -2840,6 +3130,7 @@ const urls = [
   ...glossaryUrls.sort(),
   ...contentUrls.sort(),
   ...weeklyUrls,
+  ...gameUrls,
   ...LINEUP_LEAGUES.map((lg) => `${BASE}/lineups/${lg}`),
   ...(LINEUP_LEAGUES.length ? [`${BASE}/methodology/lineups`] : []),
   ...VALUE_LEAGUES.map((lg) => `${BASE}/value/${lg}`),
@@ -2862,6 +3153,7 @@ const SECTIONS = [
   ["glossary", (u) => u.includes("/glossary")],
   ["explainers", (u) => u.includes("/metrics") || u.includes("/changelog") || u.includes("/about")],
   ["weekly", (u) => u.includes("/weekly")],
+  ["games", (u) => u.includes("/game")],
   ["core", () => true],
 ];
 

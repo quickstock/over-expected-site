@@ -2,6 +2,11 @@
  "generated": "2026-10-22",
  "entries": [
   {
+   "date": "2026-10-30",
+   "title": "A page for every game",
+   "body": "Every game in all nine leagues now has a page: the final score next to what each side's shots were worth, a score race, both shot maps and every player's line, plus a list of each league-season's games. Field goals are priced with the shot-making model and free throws at the shooter's season rate, so the shots' worth is what the attempts were worth, not a corrected score. It is not a luck number either: the actual margin moves only 0.44 points per point of expected margin in the NBA, because misses bring putbacks and trailing teams shoot more. A \"these shots win N in 100\" figure was built and failed its calibration test, so it is not shown. Greek Basket League games carry no date, since its dates are estimated, and games whose play-by-play does not add up to the final are left out and counted."
+  },
+  {
    "date": "2026-10-23",
    "title": "The NBA back to 1997-98",
    "body": "Twenty-three more NBA seasons, 1997-98 to 2019-20, with all three lenses, teams and, from 2003-04, referees. The archive is built with the same models as today, each season's trained on its six nearest seasons so a 1998 shot is priced on late-1990s basketball, and it loads only when a page asks for it. Players with archive seasons get their whole careers. Before the 2004-05 hand-check change foul-drawing leans toward tall players, because post-ups drew fouls and a shot-location baseline cannot see a post-up; the methodology page has the numbers. 1996-97 is left out: its shot locations are coded differently and skew its zone model. Building it also fixed shots missing from four current-era seasons: about 1,800 a season had no court location and dropped out of shot value."

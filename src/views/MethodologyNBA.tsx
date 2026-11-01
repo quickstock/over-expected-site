@@ -3,6 +3,7 @@ import type { CalibrationBin } from "../types";
 import { int } from "../lib/format";
 import { useMeasure } from "../lib/useMeasure";
 import { useTitle } from "../lib/useTitle";
+import GameMethod from "../components/GameMethod";
 
 /**
  * Calibration of the FTAOE baseline: qualified player-seasons in deciles of
@@ -535,6 +536,8 @@ export default function MethodologyNBA() {
           which is a weaker, separate thing and is left out.
         </p>
       </div>
+
+      <GameMethod />
 
       <H2>What this number is not</H2>
       <div className="mt-4 space-y-4 text-[15px] leading-relaxed sm:text-base">
