@@ -9,3 +9,7 @@ tsconfig.tsbuildinfo
 __pycache__/
 *.pyc
 logs/
+
+# Game pages: generated per run, ~250 MB, rebuilt by export_games.py
+public/games-*.json
+public/gameweek-*.json
