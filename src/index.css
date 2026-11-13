@@ -95,12 +95,26 @@ button {
   animation-timing-function: var(--ease-out-strong);
 }
 
+/* Homepage hero: the season's shots arrive ring by ring, rim first. Each
+   ring is its own group with an inline animation-delay. */
+.shot-ring {
+  animation: shot-ring 640ms var(--ease-out-strong) both;
+}
+@keyframes shot-ring {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
   ::view-transition-group(*),
   ::view-transition-old(*),

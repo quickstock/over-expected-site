@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ShotValueRow } from "../../types";
 import { divergingColor, divergingText } from "../../lib/color";
@@ -29,19 +29,40 @@ export default function ExpectedVsActual({
   league,
   season,
   height = 400,
+  hover,
+  onHover: setHover,
 }: {
   rows: ShotValueRow[];
   league: League;
   season: string;
   height?: number;
+  /** The highlighted player, shared with the ranked list beside the chart. */
+  hover: string | null;
+  onHover: (id: string | null) => void;
 }) {
   const [wrapRef, width] = useMeasure<HTMLDivElement>();
-  const revealed = useRevealed(wrapRef, 0.15);
-  const [hover, setHover] = useState<string | null>(null);
+  const revealed = useRevealed(wrapRef, 0.35);
   const navigate = useNavigate();
-  const reduce =
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // The argument, played once on first view: every player appears on the
+  // line, as if FG% were only the shots (1); each moves to what he actually
+  // shot and takes his colour (2); the two extremes draw their gap (3).
+  // Reduced motion starts revealed, so it goes straight to the end.
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    if (!revealed) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setPhase(3);
+      return;
+    }
+    setPhase(1);
+    const toActual = setTimeout(() => setPhase(2), 1000);
+    const toGaps = setTimeout(() => setPhase(3), 2200);
+    return () => {
+      clearTimeout(toActual);
+      clearTimeout(toGaps);
+    };
+  }, [revealed]);
 
   const narrow = width > 0 && width < 560;
   const pad = { top: 18, right: 16, bottom: 42, left: 46 };
@@ -88,14 +109,14 @@ export default function ExpectedVsActual({
     return [byOE[0], byOE[byOE.length - 1]];
   }, [rows]);
 
-  const sweep: React.CSSProperties = reduce
-    ? {}
-    : {
-        clipPath: revealed
-          ? "inset(-6% -6% -6% -6%)"
-          : "inset(-6% 102% -6% -6%)",
-        transition: "clip-path 900ms var(--ease-out-strong)",
-      };
+  // Each dot's place along the line (0..1), so both moves sweep up the band
+  // from the hardest looks to the easiest.
+  const along = useMemo(() => {
+    const order = [...rows].sort((a, b) => a.xfgPct - b.xfgPct);
+    const m = new Map<string, number>();
+    order.forEach((r, i) => m.set(r.id, i / Math.max(1, order.length - 1)));
+    return m;
+  }, [rows]);
 
   if (rows.length === 0) return null;
 
@@ -170,20 +191,32 @@ export default function ExpectedVsActual({
             {narrow ? "shot what the looks were worth" : "shot exactly what the looks were worth"}
           </text>
 
-          <g style={sweep}>
+          <g>
             {rows.map((p) => {
               const on = hover === p.id;
+              const k = along.get(p.id) ?? 0;
               return (
                 <circle
                   key={p.id}
-                  cx={x(p.xfgPct)}
-                  cy={y(p.fgPct)}
+                  cx={0}
+                  cy={0}
                   r={on ? r + 1.8 : r}
-                  fill={divergingColor(p.makeOE)}
-                  opacity={0.85}
                   stroke={on ? "var(--color-ink)" : "none"}
                   strokeWidth={1}
-                  className="cursor-pointer transition-[r] duration-150"
+                  style={{
+                    transform: `translate(${x(p.xfgPct).toFixed(1)}px, ${y(
+                      phase >= 2 ? p.fgPct : p.xfgPct,
+                    ).toFixed(1)}px)`,
+                    fill: phase >= 2 ? divergingColor(p.makeOE) : "var(--color-ink-faint)",
+                    opacity: phase >= 1 ? 0.85 : 0,
+                    transition: [
+                      `opacity 420ms var(--ease-out-strong) ${(k * 520).toFixed(0)}ms`,
+                      `transform 820ms cubic-bezier(0.65, 0, 0.35, 1) ${(k * 380).toFixed(0)}ms`,
+                      `fill 520ms ease ${(k * 380 + 220).toFixed(0)}ms`,
+                      "r 150ms ease",
+                    ].join(", "),
+                  }}
+                  className="cursor-pointer"
                   onPointerEnter={() => setHover(p.id)}
                   onPointerLeave={() => setHover(null)}
                   onClick={() =>
@@ -196,21 +229,34 @@ export default function ExpectedVsActual({
             })}
           </g>
 
-          {/* the two extremes, with the drop to the line they beat or missed */}
+          {/* the two extremes, with the drop to the line they beat or missed;
+              the drop grows out of the line, then the name lands */}
           {called.map((p) => {
             const px = x(p.xfgPct);
             const py = y(p.fgPct);
             const above = p.makeOE > 0;
+            const shown = phase >= 3;
             return (
               <g key={`call-${p.id}`} className="pointer-events-none">
-                <line
-                  x1={px}
-                  y1={py}
-                  x2={px}
-                  y2={y(p.xfgPct)}
-                  stroke={divergingText(p.makeOE)}
-                  strokeWidth={1.25}
+                <rect
+                  x={px - 0.625}
+                  y={Math.min(py, y(p.xfgPct))}
+                  width={1.25}
+                  height={Math.abs(y(p.xfgPct) - py)}
+                  fill={divergingText(p.makeOE)}
+                  style={{
+                    transformBox: "fill-box",
+                    transformOrigin: above ? "50% 100%" : "50% 0%",
+                    transform: shown ? "scaleY(1)" : "scaleY(0)",
+                    transition: "transform 560ms var(--ease-out-strong)",
+                  }}
                 />
+                <g
+                  style={{
+                    opacity: shown ? 1 : 0,
+                    transition: "opacity 300ms ease 380ms",
+                  }}
+                >
                 <text
                   x={px + (above ? -7 : 7)}
                   y={py + (above ? -13 : 17)}
@@ -232,6 +278,7 @@ export default function ExpectedVsActual({
                 >
                   {signed(p.makeOE, 1)}
                 </text>
+                </g>
               </g>
             );
           })}

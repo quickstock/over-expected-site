@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 import { useWeeklyIndex } from "../data";
 import { LEAGUE_LABEL } from "../types";
 import { gamePath, weeklyPath } from "../routes";
-import { divergingText } from "../lib/color";
-import { firstLast, signed } from "../lib/format";
+import { firstLast } from "../lib/format";
 import { matchup, weekRange } from "../lib/weekly";
 import Headshot from "./Headshot";
+import { CountDelta } from "./CountDelta";
 import type { WeeklyIndex } from "../types";
 
 type Game = WeeklyIndex["weeks"][number]["best"];
@@ -27,12 +27,7 @@ function GameLine({ kind, g }: { kind: string; g: Game }) {
           {g.fgm}/{g.fga} FG, {g.pts} pts on shots worth {g.xpts.toFixed(1)} · {matchup(g)}
         </p>
       </div>
-      <span
-        className="shrink-0 font-mono tnum text-2xl font-semibold"
-        style={{ color: divergingText(g.oe) }}
-      >
-        {signed(g.oe)}
-      </span>
+      <CountDelta value={g.oe} className="shrink-0 text-2xl font-semibold" />
     </>
   );
   const row = "flex items-center gap-3";

@@ -12,8 +12,11 @@ import {
 } from "../routes";
 import { LEAGUE_LABEL, leagueDef , type League } from "../leagues";
 import type { ShotValueRow } from "../types";
-import { int } from "../lib/format";
-import { Delta } from "../components/Delta";
+import { int, signed } from "../lib/format";
+import { CountDelta } from "../components/CountDelta";
+import RankList, { type RankItem } from "../components/RankList";
+import SectionRail from "../components/SectionRail";
+import { divergingText } from "../lib/color";
 import { useTitle } from "../lib/useTitle";
 import SegmentedControl from "../components/SegmentedControl";
 import Beeswarm from "../components/charts/Beeswarm";
@@ -31,7 +34,22 @@ function seasonShort(s: string) {
 
 type Lens = "value" | "making" | "fouls";
 
-/** A lens doorway: what it measures + the season's leader, into the board. */
+/** The homepage's sections, in order, for the side rail. */
+const RAIL = [
+  { id: "oe-top", label: "This week" },
+  { id: "oe-lenses", label: "Lenses" },
+  { id: "oe-players", label: "Every player" },
+  { id: "oe-fg", label: "What FG% gets wrong" },
+  { id: "oe-teams", label: "Teams" },
+  { id: "oe-officials", label: "Officials" },
+  { id: "oe-method", label: "Method" },
+];
+
+/**
+ * A lens doorway as a square tile: what it measures, the season's leader with
+ * his number counting up, and the next four, into the board. The whole tile is
+ * one link, so the ranked rows are plain text.
+ */
 function LensCard({
   lens,
   league,
@@ -39,7 +57,7 @@ function LensCard({
   current,
   label,
   desc,
-  row,
+  rows,
   metric,
   count,
 }: {
@@ -50,31 +68,44 @@ function LensCard({
   current: string;
   label: string;
   desc: string;
-  row: ShotValueRow | undefined;
-  metric: number | undefined;
+  /** The lens's top five, best first. */
+  rows: ShotValueRow[];
+  metric: (r: ShotValueRow) => number;
   count: number;
 }) {
+  const [leader, ...next] = rows;
   return (
     <Link
       to={boardPath(league, boardLensSlug(lens), season === current ? undefined : season)}
-      className="group flex flex-col border-t border-line pt-4 transition-colors duration-150 hover:bg-wash focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+      className="group flex flex-col rounded-md border border-line bg-paper px-4 py-4 transition-colors duration-150 hover:border-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:min-h-[17rem]"
     >
       <span className="font-display text-[11px] font-medium uppercase tracking-wider text-ink-faint">
         {label}
       </span>
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-soft sm:min-h-[2.75rem]">
-        {desc}
-      </p>
-      {row && metric !== undefined && (
-        <span className="mt-3 flex items-center gap-3 border-t border-line-soft pt-3">
-          <Headshot league={league} id={row.id} name={row.name} fallback="none" className="h-10 w-10" />
+      <p className="mt-1 text-[13px] leading-snug text-ink-soft">{desc}</p>
+      {leader && (
+        <span className="mt-4 flex items-center gap-3">
+          <Headshot league={league} id={leader.id} name={leader.name} fallback="none" className="h-10 w-10" />
           <span className="min-w-0 flex-1 font-display text-[15px] font-semibold leading-snug text-ink group-hover:underline group-hover:underline-offset-4">
-            {row.name}
+            {leader.name}
           </span>
-          <Delta per100={metric} className="text-2xl" />
+          <CountDelta value={metric(leader)} className="text-2xl" />
         </span>
       )}
-      <span className="mt-2 font-mono tnum text-xs text-ink-faint">
+      {next.length > 0 && (
+        <ol className="mt-3 border-t border-line-soft pt-2">
+          {next.map((r, i) => (
+            <li key={r.id} className="flex items-baseline gap-2 py-0.5 text-[13px]">
+              <span className="w-3 font-mono tnum text-[11px] text-ink-faint">{i + 2}</span>
+              <span className="min-w-0 flex-1 truncate font-display text-ink-soft">{r.name}</span>
+              <span className="font-mono tnum" style={{ color: divergingText(metric(r)) }}>
+                {signed(metric(r), 1)}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+      <span className="mt-auto pt-2 font-mono tnum text-xs text-ink-faint">
         {int(count)} players →
       </span>
     </Link>
@@ -118,15 +149,31 @@ export default function Landing() {
 
   // Shot-value pool for the season (already sorted by points over expected).
   const svPool = useMemo(() => data.shotValue?.[season] ?? [], [data.shotValue, season]);
-  const byValue = svPool[0];
-  const byMaking = useMemo(
-    () => [...svPool].sort((a, b) => b.fgPoe100 - a.fgPoe100)[0],
+  const topValue = useMemo(() => svPool.slice(0, 5), [svPool]);
+  const topMaking = useMemo(
+    () => [...svPool].sort((a, b) => b.fgPoe100 - a.fgPoe100).slice(0, 5),
     [svPool],
   );
-  const byFouls = useMemo(
-    () => [...svPool].sort((a, b) => b.ftaoe100 - a.ftaoe100)[0],
+  const topFouls = useMemo(
+    () => [...svPool].sort((a, b) => b.ftaoe100 - a.ftaoe100).slice(0, 5),
     [svPool],
   );
+
+  // The three charts below each carry a ranked list beside them; hovering a
+  // name lights its mark and hovering a mark lights its name.
+  const [fgHover, setFgHover] = useState<string | null>(null);
+  const [teamHover, setTeamHover] = useState<string | null>(null);
+  const [refHover, setRefHover] = useState<string | null>(null);
+  const fgRanks = useMemo(() => {
+    const byOE = [...svPool].sort((a, b) => b.makeOE - a.makeOE);
+    const item = (r: ShotValueRow): RankItem => ({
+      id: r.id,
+      label: r.name,
+      value: r.makeOE,
+      to: `/player/${league}/${r.id}?season=${encodeURIComponent(season)}&lens=making`,
+    });
+    return { top: byOE.slice(0, 5).map(item), bottom: byOE.slice(-5).reverse().map(item) };
+  }, [svPool, league, season]);
 
   // FTAOE distribution for the beeswarm.
   const swarmPool = useMemo(
@@ -167,14 +214,35 @@ export default function Landing() {
 
   const teams = data.teams?.[season] ?? [];
   const refs = data.referees?.[season] ?? [];
+  const teamRanks = useMemo(() => {
+    const byNet = [...teams].sort((a, b) => b.drawn - b.conceded - (a.drawn - a.conceded));
+    const item = (t: (typeof teams)[number]): RankItem => ({
+      id: t.team,
+      label: t.team,
+      value: t.drawn - t.conceded,
+    });
+    return { top: byNet.slice(0, 5).map(item), bottom: byNet.slice(-5).reverse().map(item) };
+  }, [teams]);
+  const refRanks = useMemo(() => {
+    const val = (r: (typeof refs)[number]) => r.est ?? r.diff;
+    const byVal = [...refs].sort((a, b) => val(b) - val(a));
+    const item = (r: (typeof refs)[number]): RankItem => ({
+      id: r.id,
+      label: r.name,
+      value: val(r),
+      to: `/referee/${r.id}`,
+    });
+    return { top: byVal.slice(0, 5).map(item), bottom: byVal.slice(-5).reverse().map(item) };
+  }, [refs]);
 
   return (
     // The hero's court runs past the content column; clipped here, not at
     // the column, so it reaches the window edge without a sideways scroll.
     <div className="overflow-x-clip">
     <div className="mx-auto max-w-4xl px-5 sm:px-8">
+      <SectionRail sections={RAIL} />
       {/* hero: the thesis, this week's games, three lenses */}
-      <section className="relative isolate pt-10 sm:pt-16">
+      <section id="oe-top" className="relative isolate scroll-mt-8 pt-10 sm:pt-16">
         <ShotCloud
           league={league}
           season={season}
@@ -213,17 +281,17 @@ export default function Landing() {
           </span>
         </div>
 
-        {/* three-lens triptych */}
-        <div className="mt-6 grid gap-x-8 gap-y-6 sm:grid-cols-3">
+        {/* three-lens triptych, one square tile per lens */}
+        <div id="oe-lenses" className="mt-6 grid scroll-mt-8 gap-4 md:grid-cols-3">
           <LensCard
             lens="value"
             league={league}
             season={season}
             current={data.meta.defaultSeason}
             label="Shot value"
-            desc="Points added over expected: shots made above their difficulty, plus the free throws drawn."
-            row={byValue}
-            metric={byValue?.poe100}
+            desc="Points over expected: makes, plus the free throws drawn."
+            rows={topValue}
+            metric={(r) => r.poe100}
             count={svPool.length}
           />
           <LensCard
@@ -233,8 +301,8 @@ export default function Landing() {
             current={data.meta.defaultSeason}
             label="Shot-making"
             desc="Field goals made above or below the difficulty of the looks."
-            row={byMaking}
-            metric={byMaking?.fgPoe100}
+            rows={topMaking}
+            metric={(r) => r.fgPoe100}
             count={svPool.length}
           />
           <LensCard
@@ -244,8 +312,8 @@ export default function Landing() {
             current={data.meta.defaultSeason}
             label="Foul-drawing"
             desc="Free throws drawn beyond what his shot locations predict."
-            row={byFouls}
-            metric={byFouls?.ftaoe100}
+            rows={topFouls}
+            metric={(r) => r.ftaoe100}
             count={svPool.length}
           />
         </div>
@@ -289,7 +357,7 @@ export default function Landing() {
       </section>
 
       {/* the league, every player */}
-      <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
+      <section id="oe-players" className="mt-16 scroll-mt-8 border-t border-line pt-10 sm:mt-28 sm:pt-12">
         <SectionHead title={`${LEAGUE_LABEL[league]}, every player, ${season}`}>
           Foul-drawing per 100 possessions, one dot per qualified player. The
           shot value, shot-making, and foul-drawing boards all sort this same
@@ -313,15 +381,32 @@ export default function Landing() {
 
       {/* the argument: FG% is mostly the shot menu */}
       {moves && (
-        <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
+        <section id="oe-fg" className="mt-16 scroll-mt-8 border-t border-line pt-10 sm:mt-28 sm:pt-12">
           <SectionHead title="What FG% gets wrong">
             Field-goal percentage says what a player shot, not how well he shot
             it. Each dot is a qualified player, placed by what the shots he
             took were worth against what he actually shot.
           </SectionHead>
-          <div className="mt-6 grid items-center gap-x-8 gap-y-4 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
-            <ExpectedVsActual rows={svPool} league={league} season={season} height={460} />
-            <p className="max-w-prose text-xs leading-relaxed text-ink-faint lg:self-end lg:pb-14">
+          <div className="mt-6 grid gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
+            <ExpectedVsActual
+              rows={svPool}
+              league={league}
+              season={season}
+              height={460}
+              hover={fgHover}
+              onHover={setFgHover}
+            />
+            <div className="flex flex-col gap-6 lg:pt-4">
+            <RankList
+              topTitle="Furthest above the line"
+              bottomTitle="Furthest below the line"
+              unit="FG% minus what the looks were worth"
+              top={fgRanks.top}
+              bottom={fgRanks.bottom}
+              hover={fgHover}
+              onHover={setFgHover}
+            />
+            <p className="max-w-prose text-xs leading-relaxed text-ink-faint">
             The cloud rides the diagonal: across{" "}
             <span className="font-mono tnum">{int(svPool.length)}</span> players
             the two axes correlate{" "}
@@ -336,24 +421,36 @@ export default function Landing() {
               Every player on this lens →
             </Link>
             </p>
+            </div>
           </div>
         </section>
       )}
 
       {/* teams */}
-      <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
+      <section id="oe-teams" className="mt-16 scroll-mt-8 border-t border-line pt-10 sm:mt-28 sm:pt-12">
         <SectionHead title={`Teams: drawn vs conceded, ${season}`}>
           {def.sftaOnly ? "Shooting fouls" : "Free throws"} each team draws
           against what it concedes, per 100 possessions over expected. The
           context a player's number rides on.
         </SectionHead>
-        <div className="mt-6">
+        <div className="mt-6 grid gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,1fr)_13rem]">
           <TeamScatter
             teams={teams}
             off={(t) => t.drawn}
             def={(t) => t.conceded}
             xAxis="draws more →"
             defLabel="Conceded"
+            highlight={teamHover}
+            onHover={setTeamHover}
+          />
+          <RankList
+            topTitle="Best net"
+            bottomTitle="Worst net"
+            unit="drawn minus conceded, per 100"
+            top={teamRanks.top}
+            bottom={teamRanks.bottom}
+            hover={teamHover}
+            onHover={setTeamHover}
           />
         </div>
         <p className="mt-2">
@@ -364,7 +461,7 @@ export default function Landing() {
       </section>
 
       {/* officials */}
-      <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
+      <section id="oe-officials" className="mt-16 scroll-mt-8 border-t border-line pt-10 sm:mt-28 sm:pt-12">
         <SectionHead title={`Officials, measured, ${season}`}>
           Each dot is one official (minimum {def.refMinGames} games): free
           throws in the games they worked over what those players would draw
@@ -372,8 +469,18 @@ export default function Landing() {
           season is noise. Descriptive and league-level, never crossed with
           players.
         </SectionHead>
-        <div className="mt-6">
-          <RefStrip refs={refs} />
+        <div className="mt-6 grid items-center gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,1fr)_13rem]">
+          <RefStrip refs={refs} height={220} hover={refHover} onHover={setRefHover} />
+          <RankList
+            topTitle="Most free throws"
+            bottomTitle="Fewest free throws"
+            unit="in their games, over the expected whistle, per 100"
+            neutral
+            top={refRanks.top}
+            bottom={refRanks.bottom}
+            hover={refHover}
+            onHover={setRefHover}
+          />
         </div>
         <p className="mt-2">
           <Link to={refereesPath(league, datedPart(season, data.meta.defaultSeason))} className="font-display text-sm font-medium text-ink underline underline-offset-4 transition-colors duration-150 hover:text-ink-soft">
@@ -383,7 +490,7 @@ export default function Landing() {
       </section>
 
       {/* how it's measured */}
-      <section className="mt-16 border-t border-line pt-10 sm:mt-28 sm:pt-12">
+      <section id="oe-method" className="mt-16 scroll-mt-8 border-t border-line pt-10 sm:mt-28 sm:pt-12">
         <SectionHead title="What this measures, and what it doesn't">
           Leak-free models, anchored season by season: a shot's expected value
           never comes from a model that saw it. The number blends playstyle,

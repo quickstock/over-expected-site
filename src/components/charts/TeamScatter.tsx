@@ -6,8 +6,9 @@ import { useRevealed } from "../../lib/useRevealed";
 /**
  * Offense (x) vs defense (y) for one metric, each centered on the league
  * average. Top-right = above the league on both ends; dot color is the net
- * (offense minus defense), warm = nets out positive. Wipes in on first view;
- * eases between positions/colors when the lens or season changes.
+ * (offense minus defense), warm = nets out positive. On first view the teams
+ * slide out from the league average; they ease between positions/colors when
+ * the lens or season changes.
  */
 export default function TeamScatter({
   teams,
@@ -16,6 +17,8 @@ export default function TeamScatter({
   xAxis,
   defLabel,
   height = 380,
+  highlight = null,
+  onHover,
 }: {
   teams: TeamRow[];
   off: (t: TeamRow) => number | undefined;
@@ -23,12 +26,12 @@ export default function TeamScatter({
   xAxis: string;
   defLabel: string;
   height?: number;
+  /** A team to light up, and a hover callback, when a list sits beside it. */
+  highlight?: string | null;
+  onHover?: (team: string | null) => void;
 }) {
   const [wrapRef, width] = useMeasure<HTMLDivElement>();
   const revealed = useRevealed(wrapRef);
-  const reduce =
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const pts = teams
     .map((t) => ({ team: t.team, x: off(t), y: def(t) }))
@@ -44,15 +47,10 @@ export default function TeamScatter({
   // y inverted so "concedes more" is up.
   const y = (v: number) => pad.top + ((maxY - v) / (2 * maxY)) * innerH;
 
-  const sweep: React.CSSProperties = reduce
-    ? {}
-    : {
-        clipPath: revealed ? "inset(-4% -4% -4% -4%)" : "inset(-4% 102% -4% -4%)",
-        transition: "clip-path 950ms var(--ease-out-strong)",
-      };
-  const dotMove = reduce
-    ? undefined
-    : "transform 520ms var(--ease-out-strong), fill 360ms ease";
+  // Until the chart scrolls into view every team waits, unseen, on the
+  // league-average crossing; on reveal they slide out to where they stand,
+  // the teams nearest average first.
+  const reach = Math.hypot(innerW, innerH) / 2;
 
   return (
     <div ref={wrapRef} className="relative">
@@ -69,19 +67,31 @@ export default function TeamScatter({
             className="font-mono" fill="var(--color-ink-faint)">
             ↑ {defLabel.toLowerCase()} more
           </text>
-          <g style={sweep}>
+          <g>
             {pts.map((p) => {
               const net = p.x - p.y;
+              const px = x(p.x);
+              const py = y(p.y);
+              const delay = (Math.hypot(px - x(0), py - y(0)) / reach) * 280;
               return (
                 <g
                   key={p.team}
-                  transform={`translate(${x(p.x).toFixed(1)} ${y(p.y).toFixed(1)})`}
-                  style={{ transition: dotMove }}
+                  style={{
+                    transform: revealed
+                      ? `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px)`
+                      : `translate(${x(0).toFixed(1)}px, ${y(0).toFixed(1)}px)`,
+                    opacity: revealed ? 1 : 0,
+                    transition: `transform 720ms var(--ease-out-strong) ${delay.toFixed(0)}ms, opacity 300ms ease ${delay.toFixed(0)}ms`,
+                  }}
                 >
-                  <circle cx={0} cy={0} r={4.5} fill={divergingColor(net)} opacity={0.9}
-                    style={{ transition: dotMove }} />
+                  <circle cx={0} cy={0} r={highlight === p.team ? 6.5 : 4.5} opacity={0.9}
+                    stroke={highlight === p.team ? "var(--color-ink)" : "none"} strokeWidth={1.25}
+                    onPointerEnter={onHover && (() => onHover(p.team))}
+                    onPointerLeave={onHover && (() => onHover(null))}
+                    style={{ fill: divergingColor(net), transition: "fill 360ms ease, r 150ms ease" }} />
                   <text x={0} y={-8} textAnchor="middle" fontSize={9.5}
-                    className="font-mono" fill="var(--color-ink-soft)">
+                    fontWeight={highlight === p.team ? 600 : 400}
+                    className="font-mono" fill={highlight === p.team ? "var(--color-ink)" : "var(--color-ink-soft)"}>
                     {p.team}
                   </text>
                 </g>

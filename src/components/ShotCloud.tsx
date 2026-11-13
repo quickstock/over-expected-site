@@ -14,8 +14,13 @@ import { GEOMETRY } from "./charts/CourtZones";
  * from the theme variables so a league switch reskins it with the rest of
  * the page. Absolutely positioned by the caller and aria-hidden: it never
  * moves layout and never reaches a screen reader. It fades in when its
- * sample lands, which is after the page has painted.
+ * sample lands, which is after the page has painted, and the shots arrive
+ * ring by ring from the rim out (instant under reduced motion).
  */
+
+// Outer edges of the arrival rings, in cm from the hoop: the rim, the paint,
+// short and long mid-range, the arc, and everything deeper.
+const RINGS_CM = [120, 240, 400, 560, 700, Infinity];
 
 // Faded out toward the title (left) and toward the content below.
 const MASK =
@@ -32,10 +37,19 @@ export default function ShotCloud({
 }) {
   const court = leagueDef(league).court;
   const sample = useShotSample(league, season);
-  const paths = useMemo(() => {
+  // One made/missed path pair per ring of distance from the hoop, so the
+  // shots can arrive rim first and spread out to the arc.
+  const rings = useMemo(() => {
     if (!sample.data) return null;
     const { x, y, m } = sample.data;
-    return { missed: dotsPath(x, y, m, "0", court), made: dotsPath(x, y, m, "1", court) };
+    const ring = x.map((sx, i) => {
+      const sy = y[i];
+      return sx == null || sy == null ? -1 : RINGS_CM.findIndex((edge) => Math.hypot(sx, sy) < edge);
+    });
+    return RINGS_CM.map((_, k) => {
+      const inRing = Array.from(m, (c, i) => (ring[i] === k ? c : "x")).join("");
+      return { missed: dotsPath(x, y, inRing, "0", court), made: dotsPath(x, y, inRing, "1", court) };
+    });
   }, [sample.data, court]);
 
   return (
@@ -44,7 +58,7 @@ export default function ShotCloud({
       aria-hidden="true"
       className={`motion-safe:transition-opacity motion-safe:duration-700 ${className}`}
       style={{
-        opacity: paths ? 1 : 0,
+        opacity: rings ? 1 : 0,
         maskImage: MASK,
         WebkitMaskImage: MASK,
         maskComposite: "intersect",
@@ -52,11 +66,16 @@ export default function ShotCloud({
       }}
     >
       <g opacity={0.3}>{GEOMETRY[court].markings}</g>
-      {paths && (
-        <>
-          <path d={paths.missed} fill="var(--color-cool)" fillOpacity={0.26} />
-          <path d={paths.made} fill="var(--color-warm)" fillOpacity={0.42} />
-        </>
+      {rings && (
+        // keyed by league-season, so a new season's sample replays the arrival
+        <g key={`${league}-${season}`}>
+          {rings.map((p, k) => (
+            <g key={k} className="shot-ring" style={{ animationDelay: `${120 + k * 110}ms` }}>
+              <path d={p.missed} fill="var(--color-cool)" fillOpacity={0.26} />
+              <path d={p.made} fill="var(--color-warm)" fillOpacity={0.42} />
+            </g>
+          ))}
+        </g>
       )}
     </svg>
   );

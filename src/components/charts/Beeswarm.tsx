@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { divergingColor, divergingText, warmText, coolText } from "../../lib/color";
 import { signed, lastName } from "../../lib/format";
 import { useMeasure } from "../../lib/useMeasure";
+import { useRevealed } from "../../lib/useRevealed";
 import type { League } from "../../leagues";
 
 export interface SwarmPlayer {
@@ -39,12 +40,17 @@ export default function Beeswarm({
   className = "",
 }: Props) {
   const [wrapRef, width] = useMeasure<HTMLDivElement>();
+  // Until the swarm scrolls into view every dot waits, unseen, on the
+  // league-average line; on reveal they spread out to where they belong,
+  // nearest the average first, the outliers last.
+  const revealed = useRevealed(wrapRef, 0.35);
   const [hover, setHover] = useState<Dot | null>(null);
   const navigate = useNavigate();
 
   const labelBand = 56;
   const pad = { top: labelBand, bottom: 30, left: 10, right: 10 };
   const innerW = Math.max(40, width - pad.left - pad.right);
+  const midY = pad.top + (height - pad.top - pad.bottom) / 2;
   const r = width < 480 ? 2.7 : 3.4;
 
   const { dots, maxAbs } = useMemo(() => {
@@ -52,7 +58,6 @@ export default function Beeswarm({
     const maxAbs =
       Math.max(...players.map((p) => Math.abs(p.per100)), 0.1) * 1.06;
     const x = (v: number) => pad.left + ((v + maxAbs) / (2 * maxAbs)) * innerW;
-    const midY = pad.top + (height - pad.top - pad.bottom) / 2;
     const sorted = [...players].sort((a, b) => a.per100 - b.per100);
     const placed: Dot[] = [];
     const gap = 2 * r + 0.7;
@@ -176,12 +181,14 @@ export default function Beeswarm({
             <g
               key={d.id}
               style={{
-                transform: `translate(${d.px.toFixed(1)}px, ${d.py.toFixed(1)}px)`,
-                transition: `transform 560ms var(--ease-out-strong) ${(
-                  ((d.px - pad.left) / Math.max(1, innerW)) * 180
-                ).toFixed(0)}ms, opacity 400ms ease`,
+                transform: revealed
+                  ? `translate(${d.px.toFixed(1)}px, ${d.py.toFixed(1)}px)`
+                  : `translate(${x0.toFixed(1)}px, ${midY.toFixed(1)}px)`,
+                transition: `transform 760ms var(--ease-out-strong) ${(
+                  (Math.abs(d.px - x0) / Math.max(1, innerW / 2)) * 320
+                ).toFixed(0)}ms, opacity 300ms ease`,
               }}
-              className="opacity-100 starting:opacity-0"
+              className={revealed ? "opacity-100 starting:opacity-0" : "opacity-0"}
             >
               <circle
                 r={hover?.id === d.id ? r + 1.5 : r}
@@ -202,7 +209,9 @@ export default function Beeswarm({
           {callouts.map((c) => (
             <g
               key={`label-${c.id}-${season}`}
-              className="cursor-pointer opacity-100 transition-opacity delay-300 duration-300 starting:opacity-0"
+              className={`cursor-pointer transition-opacity delay-[900ms] duration-300 ${
+                revealed ? "opacity-100 starting:opacity-0" : "opacity-0"
+              }`}
               role="link"
               tabIndex={0}
               aria-label={`${c.name}, ${signed(c.per100, 1)} per 100`}

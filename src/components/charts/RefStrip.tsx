@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { int, signed } from "../../lib/format";
 import { useMeasure } from "../../lib/useMeasure";
+import { useRevealed } from "../../lib/useRevealed";
 
 /**
  * Officials as a neutral strip: x = free throws per 100 in their games over
@@ -13,13 +14,22 @@ import { useMeasure } from "../../lib/useMeasure";
 export default function RefStrip({
   refs,
   height = 190,
+  hover: hoverId,
+  onHover,
 }: {
   refs: { id: string; name: string; games: number; per100: number; diff: number; est: number | null }[];
   height?: number;
+  /** The highlighted official's id, shared with the ranked list beside it. */
+  hover: string | null;
+  onHover: (id: string | null) => void;
 }) {
   const navigate = useNavigate();
   const [wrapRef, width] = useMeasure<HTMLDivElement>();
-  const [hover, setHover] = useState<number | null>(null);
+  // Like the player swarm: every official waits on the league-rate line until
+  // the strip scrolls into view, then spreads out to where they stand.
+  const revealed = useRevealed(wrapRef, 0.35);
+  const hover = hoverId === null ? null : refs.findIndex((r) => r.id === hoverId);
+  const setHover = (i: number | null) => onHover(i === null ? null : refs[i].id);
 
   const pad = { top: 44, bottom: 30, left: 12, right: 12 };
   const innerW = Math.max(40, width - pad.left - pad.right);
@@ -61,15 +71,16 @@ export default function RefStrip({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refs, width]);
 
+  // One name at each end. Two a side printed the two most extreme officials,
+  // who sit next to each other, over one another; the list beside the strip
+  // names the rest.
   const extremes = useMemo(() => {
     const sorted = [...refs].sort((a, b) => v(b) - v(a));
-    return new Set(
-      [...sorted.slice(0, 2), ...sorted.slice(-2)].map((r) => r.name),
-    );
+    return new Set([sorted[0], sorted[sorted.length - 1]].filter(Boolean).map((r) => r.name));
   }, [refs]);
 
-  const hovered = hover !== null ? refs[hover] : null;
-  const hoveredDot = hover !== null ? dots.find((d) => d.i === hover) : null;
+  const hovered = hover !== null && hover >= 0 ? refs[hover] : null;
+  const hoveredDot = hovered ? dots.find((d) => d.i === hover) : null;
 
   return (
     <div ref={wrapRef} className="relative">
@@ -105,7 +116,7 @@ export default function RefStrip({
             className="font-mono"
             fill="var(--color-ink-faint)"
           >
-            ← fewer FTs in their games
+            {width < 480 ? "← fewer" : "← fewer FTs in their games"}
           </text>
           <text
             x={width - pad.right}
@@ -120,14 +131,22 @@ export default function RefStrip({
           {dots.map(({ px, py, i }) => (
             <circle
               key={i}
-              cx={px}
-              cy={py}
+              cx={0}
+              cy={0}
               r={hover === i ? 5.5 : 4}
               fill={
                 hover === i ? "var(--color-ink)" : "oklch(0.45 0.008 270 / 0.55)"
               }
               className="cursor-pointer"
-              style={{ transition: "r 120ms ease" }}
+              style={{
+                transform: revealed
+                  ? `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px)`
+                  : `translate(${x(0).toFixed(1)}px, ${midY.toFixed(1)}px)`,
+                opacity: revealed ? 1 : 0,
+                transition: `transform 720ms var(--ease-out-strong) ${(
+                  (Math.abs(px - x(0)) / Math.max(1, innerW / 2)) * 300
+                ).toFixed(0)}ms, opacity 300ms ease, r 120ms ease`,
+              }}
               onPointerEnter={() => setHover(i)}
               onPointerLeave={() => setHover(null)}
               onClick={() => navigate(`/referee/${refs[i].id}`)}
@@ -147,6 +166,7 @@ export default function RefStrip({
                 fontWeight={600}
                 className="font-display"
                 fill="var(--color-ink-soft)"
+                style={{ opacity: revealed ? 1 : 0, transition: "opacity 300ms ease 800ms" }}
               >
                 {refs[i].name.split(" ").slice(-1)[0]}
               </text>
